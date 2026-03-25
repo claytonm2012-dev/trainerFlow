@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/notificar-aulas?secret=trainerflow_secret_2026",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/notificar-mensalidades?secret=trainerflow_secret_2026",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/bloquear-trials?secret=trainerflow_secret_2026",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}
