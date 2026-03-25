@@ -24,8 +24,6 @@ import { acessoBloqueado } from "@/utils/acesso";
 import { calcularFimTrial, getValorPlano } from "@/utils/plano";
 import { processarAutomacaoAssinaturas } from "@/utils/automacaoAssinatura";
 
-
-
 async function registrarPush() {
   try {
     if (typeof window === "undefined") return;
@@ -185,12 +183,30 @@ export default function DashboardPage() {
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
   const [indiceAtual, setIndiceAtual] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
 
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [financeiro, setFinanceiro] = useState<RegistroFinanceiro[]>([]);
   const [carregandoMetricas, setCarregandoMetricas] = useState(true);
   const [dadosUsuario, setDadosUsuario] = useState<PersonalData | null>(null);
+
+  useEffect(() => {
+    function handleResize() {
+      if (typeof window === "undefined") return;
+      const width = window.innerWidth;
+      setIsMobile(width <= 768);
+      setIsTablet(width <= 1024);
+      setIsCompact(width <= 480);
+    }
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const saudacao = useMemo(() => {
     const hora = new Date().getHours();
@@ -199,147 +215,151 @@ export default function DashboardPage() {
     return "Boa noite";
   }, []);
 
- useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
-    const currentUser = user;
+      const currentUser = user;
 
-    async function carregarDashboard() {
-      try {
-        setCarregandoMetricas(true);
+      async function carregarDashboard() {
+        try {
+          setCarregandoMetricas(true);
 
-        console.log("1 - lendo users");
-        const personalRef = doc(db, "users", currentUser.uid);
-        const personalSnap = await getDoc(personalRef);
+          console.log("1 - lendo users");
+          const personalRef = doc(db, "users", currentUser.uid);
+          const personalSnap = await getDoc(personalRef);
 
-        console.log("UID logado:", currentUser.uid);
-        console.log("Documento existe?", personalSnap.exists());
+          console.log("UID logado:", currentUser.uid);
+          console.log("Documento existe?", personalSnap.exists());
 
-        if (!personalSnap.exists()) {
-          console.log("Documento do usuário não encontrado em /users/{uid}");
-          router.push("/bloqueado");
-          return;
-        }
+          if (!personalSnap.exists()) {
+            console.log("Documento do usuário não encontrado em /users/{uid}");
+            router.push("/bloqueado");
+            return;
+          }
 
-        const personal = personalSnap.data() as PersonalData;
-        const isAdmin = personal?.tipo === "admin";
+          const personal = personalSnap.data() as PersonalData;
+          const isAdminAtual = personal?.tipo === "admin";
 
-        console.log("Dados do usuário:", personal);
-        console.log("Tipo:", personal?.tipo);
-        console.log("isAdmin:", isAdmin);
+          console.log("Dados do usuário:", personal);
+          console.log("Tipo:", personal?.tipo);
+          console.log("isAdmin:", isAdminAtual);
 
-        console.log("2 - atualizando campos assinatura, se necessário");
-        const precisaAtualizarCamposDeAssinatura =
-          !personal.plano ||
-          personal.valorPlano === undefined ||
-          !personal.statusAcesso ||
-          !personal.trialInicio ||
-          !personal.trialFim ||
-          !personal.pagamentoStatus ||
-          !("vencimentoEm" in personal) ||
-          !("linkPagamento" in personal);
+          console.log("2 - atualizando campos assinatura, se necessário");
+          const precisaAtualizarCamposDeAssinatura =
+            !personal.plano ||
+            personal.valorPlano === undefined ||
+            !personal.statusAcesso ||
+            !personal.trialInicio ||
+            !personal.trialFim ||
+            !personal.pagamentoStatus ||
+            !("vencimentoEm" in personal) ||
+            !("linkPagamento" in personal);
 
-        if (precisaAtualizarCamposDeAssinatura) {
-          const agora = new Date();
-          const trialFim = calcularFimTrial();
+          if (precisaAtualizarCamposDeAssinatura) {
+            const agora = new Date();
+            const trialFim = calcularFimTrial();
 
-          await updateDoc(personalRef, {
-            plano: personal.plano || (isAdmin ? "anual" : "mensal"),
-            valorPlano:
-              personal.valorPlano !== undefined
-                ? personal.valorPlano
-                : isAdmin
-                ? 0
-                : getValorPlano("mensal"),
-            statusAcesso: isAdmin
-              ? personal.statusAcesso || "ativo"
-              : personal.statusAcesso || "trial",
-            trialInicio: personal.trialInicio || agora.toISOString(),
-            trialFim: personal.trialFim || trialFim.toISOString(),
-            pagamentoStatus: isAdmin
-              ? personal.pagamentoStatus || "pago"
-              : personal.pagamentoStatus || "pendente",
-            vencimentoEm:
-              "vencimentoEm" in personal ? personal.vencimentoEm ?? null : null,
-            linkPagamento: personal.linkPagamento || "",
+            await updateDoc(personalRef, {
+              plano: personal.plano || (isAdminAtual ? "anual" : "mensal"),
+              valorPlano:
+                personal.valorPlano !== undefined
+                  ? personal.valorPlano
+                  : isAdminAtual
+                  ? 0
+                  : getValorPlano("mensal"),
+              statusAcesso: isAdminAtual
+                ? personal.statusAcesso || "ativo"
+                : personal.statusAcesso || "trial",
+              trialInicio: personal.trialInicio || agora.toISOString(),
+              trialFim: personal.trialFim || trialFim.toISOString(),
+              pagamentoStatus: isAdminAtual
+                ? personal.pagamentoStatus || "pago"
+                : personal.pagamentoStatus || "pendente",
+              vencimentoEm:
+                "vencimentoEm" in personal ? personal.vencimentoEm ?? null : null,
+              linkPagamento: personal.linkPagamento || "",
+            });
+          }
+
+          console.log("3 - relendo user atualizado");
+          const personalAtualizadoSnap = await getDoc(personalRef);
+
+          if (!personalAtualizadoSnap.exists()) {
+            console.log("Documento sumiu após atualização");
+            router.push("/bloqueado");
+            return;
+          }
+
+          const personalAtualizado =
+            personalAtualizadoSnap.data() as PersonalData;
+
+          console.log("Dados atualizados:", personalAtualizado);
+          setDadosUsuario(personalAtualizado);
+
+          const bloqueado = acessoBloqueado({
+            statusAcesso: personalAtualizado?.statusAcesso,
+            pagamentoStatus: personalAtualizado?.pagamentoStatus,
+            trialFim: personalAtualizado?.trialFim,
+            vencimentoEm: personalAtualizado?.vencimentoEm,
+            tipo: personalAtualizado?.tipo,
           });
+
+          console.log("bloqueado:", bloqueado);
+
+          if (bloqueado) {
+            router.push("/bloqueado");
+            return;
+          }
+
+          console.log("4 - processando automação");
+          await processarAutomacaoAssinaturas();
+
+          console.log("5 - registrando push");
+          await registrarPush();
+
+          console.log("6 - lendo students");
+          const alunosSnapshot = await getDocs(
+            query(collection(db, "students"), where("userId", "==", currentUser.uid))
+          );
+
+          console.log("7 - lendo agenda");
+          const agendaSnapshot = await getDocs(
+            query(collection(db, "agenda"), where("userId", "==", currentUser.uid))
+          );
+
+          console.log("8 - lendo financeiro");
+          const financeiroSnapshot = await getDocs(
+            query(collection(db, "financeiro"), where("userId", "==", currentUser.uid))
+          );
+
+          const listaAlunos = alunosSnapshot.docs.map((docItem) => ({
+            id: docItem.id,
+            ...docItem.data(),
+          })) as Aluno[];
+
+          const listaAulas = agendaSnapshot.docs.map((docItem) => ({
+            id: docItem.id,
+            ...docItem.data(),
+          })) as Aula[];
+
+          const listaFinanceiro = financeiroSnapshot.docs.map((docItem) => ({
+            id: docItem.id,
+            ...docItem.data(),
+          })) as RegistroFinanceiro[];
+
+          setAlunos(listaAlunos);
+          setAulas(listaAulas);
+          setFinanceiro(listaFinanceiro);
+        } catch (error) {
+          console.error("ERRO REAL DO DASHBOARD =>", error);
+        } finally {
+          setCarregandoMetricas(false);
         }
-
-        console.log("3 - relendo user atualizado");
-        const personalAtualizadoSnap = await getDoc(personalRef);
-
-        if (!personalAtualizadoSnap.exists()) {
-          console.log("Documento sumiu após atualização");
-          router.push("/bloqueado");
-          return;
-        }
-
-        const personalAtualizado =
-          personalAtualizadoSnap.data() as PersonalData;
-
-        console.log("Dados atualizados:", personalAtualizado);
-
-        const bloqueado = acessoBloqueado({
-          statusAcesso: personalAtualizado?.statusAcesso,
-          pagamentoStatus: personalAtualizado?.pagamentoStatus,
-          trialFim: personalAtualizado?.trialFim,
-          vencimentoEm: personalAtualizado?.vencimentoEm,
-          tipo: personalAtualizado?.tipo,
-        });
-
-        console.log("bloqueado:", bloqueado);
-
-        if (bloqueado) {
-          router.push("/bloqueado");
-          return;
-        }
-
-    console.log("3 - registrando push");
-    await registrarPush();
-
-    console.log("4 - lendo students");
-    const alunosSnapshot = await getDocs(
-      query(collection(db, "students"), where("userId", "==", currentUser.uid))
-    );
-
-    console.log("5 - lendo agenda");
-    const agendaSnapshot = await getDocs(
-      query(collection(db, "agenda"), where("userId", "==", currentUser.uid))
-    );
-
-    console.log("6 - lendo financeiro");
-    const financeiroSnapshot = await getDocs(
-      query(collection(db, "financeiro"), where("userId", "==", currentUser.uid))
-    );
-
-    const listaAlunos = alunosSnapshot.docs.map((docItem) => ({
-      id: docItem.id,
-      ...docItem.data(),
-    })) as Aluno[];
-
-    const listaAulas = agendaSnapshot.docs.map((docItem) => ({
-      id: docItem.id,
-      ...docItem.data(),
-    })) as Aula[];
-
-    const listaFinanceiro = financeiroSnapshot.docs.map((docItem) => ({
-      id: docItem.id,
-      ...docItem.data(),
-    })) as RegistroFinanceiro[];
-
-    setAlunos(listaAlunos);
-    setAulas(listaAulas);
-    setFinanceiro(listaFinanceiro);
-  } catch (error) {
-    console.error("ERRO REAL DO DASHBOARD =>", error);
-  } finally {
-    setCarregandoMetricas(false);
-  }
-}
+      }
 
       await carregarDashboard();
     });
@@ -466,55 +486,204 @@ export default function DashboardPage() {
     )}.`;
   }, [carregandoMetricas, hoje, isAdmin]);
 
+  const heroResponsivo = {
+    ...hero,
+    gridTemplateColumns: isMobile
+      ? "1fr"
+      : isTablet
+      ? "1fr"
+      : "1.15fr 0.85fr",
+    gap: isMobile ? "14px" : isTablet ? "16px" : "20px",
+  };
+
+  const heroPrincipalResponsivo = {
+    ...heroPrincipal,
+    padding: isCompact ? "16px" : isMobile ? "18px" : isTablet ? "24px" : "32px",
+    borderRadius: isMobile ? "20px" : "30px",
+  };
+
+  const tituloResponsivo = {
+    ...titulo,
+    fontSize: isCompact ? "30px" : isMobile ? "34px" : isTablet ? "44px" : "56px",
+    lineHeight: isMobile ? 1.06 : 1.02,
+    wordBreak: "break-word" as const,
+  };
+
+  const descricaoResponsiva = {
+    ...descricao,
+    maxWidth: "100%",
+    fontSize: isMobile ? "15px" : "16px",
+    lineHeight: isMobile ? 1.7 : 1.8,
+  };
+
+  const acoesHeroResponsiva = {
+    ...acoesHero,
+    flexDirection: isMobile ? ("column" as const) : ("row" as const),
+    gap: isMobile ? "10px" : "12px",
+    marginTop: isMobile ? "20px" : "26px",
+  };
+
+  const heroLateralResponsiva = {
+    ...heroLateral,
+    gridTemplateRows: isMobile ? "1fr" : "1fr 1fr",
+    gap: isMobile ? "14px" : "18px",
+  };
+
+  const heroResumoCardResponsivo = {
+    ...heroResumoCard,
+    padding: isCompact ? "16px" : isMobile ? "18px" : "24px",
+    borderRadius: isMobile ? "20px" : "26px",
+  };
+
+  const blocoMetricasResponsivo = {
+    ...blocoMetricas,
+    padding: isCompact ? "14px" : isMobile ? "16px" : isTablet ? "22px" : "28px",
+    borderRadius: isMobile ? "20px" : "30px",
+  };
+
+  const metricasHeaderResponsivo = {
+    ...metricasHeader,
+    gap: isMobile ? "12px" : "16px",
+    marginBottom: isMobile ? "16px" : "20px",
+  };
+
+  const metricasTituloResponsivo = {
+    ...metricasTitulo,
+    fontSize: isCompact ? "24px" : isMobile ? "26px" : isTablet ? "30px" : "36px",
+  };
+
+  const metricasStatusBoxResponsivo = {
+    ...metricasStatusBox,
+    width: isMobile ? "100%" : "auto",
+  };
+
+  const gridMetricasResponsivo = {
+    ...gridMetricas,
+    gridTemplateColumns: isMobile
+      ? "1fr"
+      : isTablet
+      ? "repeat(2, minmax(0, 1fr))"
+      : "repeat(4, minmax(0, 1fr))",
+    gap: isMobile ? "12px" : "16px",
+  };
+
+  const blocoCarouselResponsivo = {
+    ...blocoCarousel,
+    padding: isCompact ? "14px" : isMobile ? "16px" : isTablet ? "22px" : "28px",
+    borderRadius: isMobile ? "20px" : "30px",
+  };
+
+  const blocoHeaderResponsivo = {
+    ...blocoHeader,
+    gap: isMobile ? "12px" : "16px",
+    marginBottom: isMobile ? "16px" : "20px",
+  };
+
+  const blocoTituloResponsivo = {
+    ...blocoTitulo,
+    fontSize: isCompact ? "24px" : isMobile ? "26px" : isTablet ? "30px" : "36px",
+  };
+
+  const carouselTrackResponsivo = {
+    ...carouselTrack,
+    gridAutoColumns: isCompact
+      ? "88%"
+      : isMobile
+      ? "84%"
+      : isTablet
+      ? "minmax(280px, 320px)"
+      : "minmax(320px, 360px)",
+    gap: isMobile ? "12px" : "18px",
+  };
+
+  const blocoPremiumInfoResponsivo = {
+    ...premiumInfoCard,
+    padding: isCompact ? "14px" : isMobile ? "16px" : isTablet ? "22px" : "28px",
+    borderRadius: isMobile ? "20px" : "30px",
+  };
+
+  const premiumTituloResponsivo = {
+    ...premiumTitulo,
+    fontSize: isCompact ? "24px" : isMobile ? "26px" : isTablet ? "30px" : "34px",
+  };
+
   return (
-    <div style={pagina}>
+    <div
+      style={{
+        ...pagina,
+        gap: isMobile ? "16px" : "26px",
+        width: "100%",
+        maxWidth: "100%",
+        overflowX: "hidden",
+      }}
+    >
       <div style={fundoGlowUm}></div>
       <div style={fundoGlowDois}></div>
       <div style={fundoGlowTres}></div>
 
-      <section style={hero}>
-        <div style={heroPrincipal}>
+      <section style={heroResponsivo}>
+        <div style={heroPrincipalResponsivo}>
           <p style={eyebrow}>
             {isAdmin
               ? "Painel premium do TrainerFlow • Administrador"
               : "Painel premium do TrainerFlow"}
           </p>
-          <h1 style={titulo}>{saudacao}, bem-vindo ao seu dashboard</h1>
-          <p style={descricao}>
+
+          <h1 style={tituloResponsivo}>{saudacao}, bem-vindo ao seu dashboard</h1>
+
+          <p style={descricaoResponsiva}>
             Centralize sua gestão profissional em um só lugar. Acesse alunos,
             agenda, financeiro e cadastros com visual premium, navegação mais
             elegante e fluxo mais organizado.
           </p>
 
-          <div style={acoesHero}>
+          <div style={acoesHeroResponsiva}>
             <button
               onClick={() => irParaRota("/dashboard/lista-alunos")}
-              style={botaoPrincipal}
+              style={{
+                ...botaoPrincipal,
+                width: isMobile ? "100%" : "auto",
+              }}
             >
               Abrir lista de alunos
             </button>
 
             <button
               onClick={() => irParaRota("/dashboard/agenda")}
-              style={botaoSecundario}
+              style={{
+                ...botaoSecundario,
+                width: isMobile ? "100%" : "auto",
+              }}
             >
               Ir para agenda
             </button>
           </div>
         </div>
 
-        <div style={heroLateral}>
-          <div style={heroResumoCard}>
+        <div style={heroLateralResponsiva}>
+          <div style={heroResumoCardResponsivo}>
             <p style={heroResumoRotulo}>Acesso rápido</p>
-            <h2 style={heroResumoValorAzul}>{totalAreas}</h2>
+            <h2
+              style={{
+                ...heroResumoValorAzul,
+                fontSize: isMobile ? "32px" : "40px",
+              }}
+            >
+              {totalAreas}
+            </h2>
             <p style={heroResumoTexto}>
               Áreas principais para controlar seu sistema com rapidez.
             </p>
           </div>
 
-          <div style={heroResumoCard}>
+          <div style={heroResumoCardResponsivo}>
             <p style={heroResumoRotulo}>Organização</p>
-            <h2 style={heroResumoValorVerde}>
+            <h2
+              style={{
+                ...heroResumoValorVerde,
+                fontSize: isMobile ? "32px" : "40px",
+              }}
+            >
               {isAdmin ? "Admin" : "Premium"}
             </h2>
             <p style={heroResumoTexto}>
@@ -525,23 +694,28 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section style={blocoMetricas}>
-        <div style={metricasHeader}>
+      <section style={blocoMetricasResponsivo}>
+        <div style={metricasHeaderResponsivo}>
           <div>
             <p style={metricasMini}>Visão geral da plataforma</p>
-            <h2 style={metricasTitulo}>Indicadores principais</h2>
+            <h2 style={metricasTituloResponsivo}>Indicadores principais</h2>
           </div>
 
-          <div style={metricasStatusBox}>
+          <div style={metricasStatusBoxResponsivo}>
             <span style={metricasStatusDot}></span>
             <span style={metricasStatusTexto}>{textoStatusMetricas}</span>
           </div>
         </div>
 
-        <div style={gridMetricas}>
+        <div style={gridMetricasResponsivo}>
           <div style={cardMetricaVerde}>
             <p style={metricaRotulo}>Alunos ativos</p>
-            <h3 style={metricaValorVerde}>
+            <h3
+              style={{
+                ...metricaValorVerde,
+                fontSize: isMobile ? "30px" : "38px",
+              }}
+            >
               {carregandoMetricas ? "--" : alunosAtivos}
             </h3>
             <p style={metricaTexto}>Total de alunos com status ativo.</p>
@@ -549,7 +723,12 @@ export default function DashboardPage() {
 
           <div style={cardMetricaAmarelo}>
             <p style={metricaRotulo}>Pagamentos pendentes</p>
-            <h3 style={metricaValorAmarelo}>
+            <h3
+              style={{
+                ...metricaValorAmarelo,
+                fontSize: isMobile ? "30px" : "38px",
+              }}
+            >
               {carregandoMetricas ? "--" : pagamentosPendentes}
             </h3>
             <p style={metricaTexto}>Pendentes e atrasados na base atual.</p>
@@ -557,7 +736,12 @@ export default function DashboardPage() {
 
           <div style={cardMetricaAzul}>
             <p style={metricaRotulo}>Pagamentos pagos</p>
-            <h3 style={metricaValorAzul}>
+            <h3
+              style={{
+                ...metricaValorAzul,
+                fontSize: isMobile ? "30px" : "38px",
+              }}
+            >
               {carregandoMetricas ? "--" : pagamentosPagos}
             </h3>
             <p style={metricaTexto}>Alunos marcados com pagamento em dia.</p>
@@ -565,7 +749,12 @@ export default function DashboardPage() {
 
           <div style={cardMetricaCiano}>
             <p style={metricaRotulo}>Aulas do dia</p>
-            <h3 style={metricaValorCiano}>
+            <h3
+              style={{
+                ...metricaValorCiano,
+                fontSize: isMobile ? "30px" : "38px",
+              }}
+            >
               {carregandoMetricas ? "--" : aulasDoDia}
             </h3>
             <p style={metricaTexto}>Aulas registradas para hoje na agenda.</p>
@@ -573,7 +762,12 @@ export default function DashboardPage() {
 
           <div style={cardMetricaVerdeForte}>
             <p style={metricaRotulo}>Faturamento mensal</p>
-            <h3 style={metricaValorVerdeForte}>
+            <h3
+              style={{
+                ...metricaValorVerdeForte,
+                fontSize: isMobile ? "28px" : "34px",
+              }}
+            >
               {carregandoMetricas ? "R$ --" : formatarMoeda(faturamentoMensal)}
             </h3>
             <p style={metricaTexto}>
@@ -583,7 +777,12 @@ export default function DashboardPage() {
 
           <div style={cardMetricaRoxo}>
             <p style={metricaRotulo}>Vencem hoje</p>
-            <h3 style={metricaValorRoxo}>
+            <h3
+              style={{
+                ...metricaValorRoxo,
+                fontSize: isMobile ? "30px" : "38px",
+              }}
+            >
               {carregandoMetricas ? "--" : vencemHoje}
             </h3>
             <p style={metricaTexto}>Cobranças com vencimento no dia atual.</p>
@@ -591,7 +790,12 @@ export default function DashboardPage() {
 
           <div style={cardMetricaRosa}>
             <p style={metricaRotulo}>Vencem amanhã</p>
-            <h3 style={metricaValorRosa}>
+            <h3
+              style={{
+                ...metricaValorRosa,
+                fontSize: isMobile ? "30px" : "38px",
+              }}
+            >
               {carregandoMetricas ? "--" : vencemAmanha}
             </h3>
             <p style={metricaTexto}>
@@ -601,11 +805,11 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section style={blocoCarousel}>
-        <div style={blocoHeader}>
+      <section style={blocoCarouselResponsivo}>
+        <div style={blocoHeaderResponsivo}>
           <div>
             <p style={blocoMini}>Navegação principal</p>
-            <h2 style={blocoTitulo}>Acesso em carrossel</h2>
+            <h2 style={blocoTituloResponsivo}>Acesso em carrossel</h2>
           </div>
 
           <div style={controlesCarousel}>
@@ -618,12 +822,15 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div ref={carouselRef} style={carouselTrack}>
+        <div ref={carouselRef} style={carouselTrackResponsivo}>
           {atalhosCarousel.map((item, indice) => (
             <div
               key={item.titulo}
               style={{
                 ...cardCarousel,
+                minHeight: isMobile ? "220px" : "250px",
+                padding: isCompact ? "16px" : isMobile ? "18px" : "24px",
+                borderRadius: isMobile ? "20px" : "28px",
                 background: item.gradiente,
                 border: item.borda,
                 boxShadow:
@@ -651,8 +858,22 @@ export default function DashboardPage() {
               </div>
 
               <div style={cardCarouselConteudo}>
-                <h3 style={cardCarouselTitulo}>{item.titulo}</h3>
-                <p style={cardCarouselDescricao}>{item.descricao}</p>
+                <h3
+                  style={{
+                    ...cardCarouselTitulo,
+                    fontSize: isCompact ? "22px" : isMobile ? "24px" : "30px",
+                  }}
+                >
+                  {item.titulo}
+                </h3>
+                <p
+                  style={{
+                    ...cardCarouselDescricao,
+                    lineHeight: isMobile ? 1.6 : 1.8,
+                  }}
+                >
+                  {item.descricao}
+                </p>
               </div>
 
               <button
@@ -683,15 +904,29 @@ export default function DashboardPage() {
       </section>
 
       <section style={blocoPremiumInfo}>
-        <div style={premiumInfoCard}>
+        <div style={blocoPremiumInfoResponsivo}>
           <p style={premiumMini}>Fluxo recomendado</p>
-          <h2 style={premiumTitulo}>Como usar o TrainerFlow</h2>
+          <h2 style={premiumTituloResponsivo}>Como usar o TrainerFlow</h2>
 
           <div style={premiumGrid}>
-            <div style={premiumItem}>
+            <div
+              style={{
+                ...premiumItem,
+                gap: isMobile ? "12px" : "16px",
+                padding: isCompact ? "12px" : isMobile ? "14px" : "18px",
+                borderRadius: isMobile ? "18px" : "22px",
+              }}
+            >
               <span style={premiumNumero}>1</span>
               <div>
-                <h3 style={premiumItemTitulo}>Cadastre ou atualize alunos</h3>
+                <h3
+                  style={{
+                    ...premiumItemTitulo,
+                    fontSize: isMobile ? "18px" : "20px",
+                  }}
+                >
+                  Cadastre ou atualize alunos
+                </h3>
                 <p style={premiumItemTexto}>
                   Organize dados, plano, cobrança, vencimento e situação de cada
                   aluno.
@@ -699,10 +934,24 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div style={premiumItem}>
+            <div
+              style={{
+                ...premiumItem,
+                gap: isMobile ? "12px" : "16px",
+                padding: isCompact ? "12px" : isMobile ? "14px" : "18px",
+                borderRadius: isMobile ? "18px" : "22px",
+              }}
+            >
               <span style={premiumNumero}>2</span>
               <div>
-                <h3 style={premiumItemTitulo}>Monte sua agenda semanal</h3>
+                <h3
+                  style={{
+                    ...premiumItemTitulo,
+                    fontSize: isMobile ? "18px" : "20px",
+                  }}
+                >
+                  Monte sua agenda semanal
+                </h3>
                 <p style={premiumItemTexto}>
                   Distribua aulas, horários, presença, faltas e reposições com
                   controle visual.
@@ -710,10 +959,24 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div style={premiumItem}>
+            <div
+              style={{
+                ...premiumItem,
+                gap: isMobile ? "12px" : "16px",
+                padding: isCompact ? "12px" : isMobile ? "14px" : "18px",
+                borderRadius: isMobile ? "18px" : "22px",
+              }}
+            >
               <span style={premiumNumero}>3</span>
               <div>
-                <h3 style={premiumItemTitulo}>Feche com o financeiro</h3>
+                <h3
+                  style={{
+                    ...premiumItemTitulo,
+                    fontSize: isMobile ? "18px" : "20px",
+                  }}
+                >
+                  Feche com o financeiro
+                </h3>
                 <p style={premiumItemTexto}>
                   Controle pagamentos, pendências e cobranças com mais precisão.
                 </p>
