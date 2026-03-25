@@ -722,3 +722,146 @@ body {
     font-size: 14px;
   }
 }
+/* ================= MOBILE DASHBOARD FIX ================= */
+@media (max-width: 900px) {
+  .tf-dashboard-page {
+    flex-direction: column;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  .tf-sidebar {
+    width: 100%;
+    min-width: 100%;
+    min-height: auto;
+    padding: 16px 12px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .tf-dashboard-content {
+    width: 100%;
+    min-width: 100%;
+    padding: 12px;
+  }
+
+  .tf-dashboard-inner {
+    min-height: auto;
+    width: 100%;
+    padding: 16px;
+    border-radius: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .tf-dashboard-page {
+    width: 100%;
+    max-width: 100%;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  .tf-sidebar {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    min-height: auto;
+    padding: 14px 10px;
+  }
+
+  .tf-logo-box {
+    padding: 14px;
+    margin-bottom: 16px;
+    border-radius: 18px;
+  }
+
+  .tf-logo-icon {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    font-size: 22px;
+    border-radius: 16px;
+  }
+
+  .tf-logo-title {
+    font-size: 20px;
+  }
+
+  .tf-logo-subtitle {
+    font-size: 12px;
+    white-space: normal;
+  }
+
+  .tf-menu-box {
+    gap: 10px;
+  }
+
+  .tf-menu-btn {
+    min-height: 58px;
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .tf-menu-text {
+    font-size: 15px;
+  }
+
+  .tf-sidebar-footer {
+    margin-top: 14px;
+  }
+
+  .tf-dashboard-content {
+    width: 100%;
+    max-width: 100%;
+    padding: 10px;
+  }
+
+  .tf-dashboard-inner {
+    width: 100%;
+    max-width: 100%;
+    min-height: auto;
+    padding: 14px;
+    border-radius: 18px;
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 480px) {
+  .tf-sidebar {
+    padding: 12px 8px;
+  }
+
+  .tf-logo-box {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .tf-logo-title {
+    font-size: 18px;
+  }
+
+  .tf-menu-btn {
+    min-height: 54px;
+    padding: 12px;
+  }
+
+  .tf-menu-text {
+    font-size: 14px;
+  }
+
+  .tf-dashboard-content {
+    padding: 8px;
+  }
+
+  .tf-dashboard-inner {
+    padding: 12px;
+    border-radius: 16px;
+  }
+}
