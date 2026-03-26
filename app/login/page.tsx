@@ -2,15 +2,45 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import auth from "../firebaseAuth";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [carregando, setCarregando] = useState(false);
 
-  function entrar() {
-    router.push("/dashboard");
+  async function entrar() {
+    if (!email || !senha) {
+      alert("Preencha e-mail e senha.");
+      return;
+    }
+
+    try {
+      setCarregando(true);
+
+      await signInWithEmailAndPassword(auth, email, senha);
+
+      router.replace("/dashboard");
+    } catch (error: any) {
+      console.error("Erro no login:", error);
+
+      if (
+        error?.code === "auth/invalid-credential" ||
+        error?.code === "auth/wrong-password" ||
+        error?.code === "auth/user-not-found"
+      ) {
+        alert("E-mail ou senha incorretos.");
+      } else if (error?.code === "auth/invalid-email") {
+        alert("E-mail inválido.");
+      } else {
+        alert("Não foi possível entrar. Tente novamente.");
+      }
+    } finally {
+      setCarregando(false);
+    }
   }
 
   return (
@@ -228,6 +258,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={entrar}
+            disabled={carregando}
             style={{
               marginTop: "6px",
               height: "60px",
@@ -240,9 +271,10 @@ export default function LoginPage() {
               fontWeight: 900,
               cursor: "pointer",
               boxShadow: "0 16px 32px rgba(34,197,94,0.28)",
+              opacity: carregando ? 0.7 : 1,
             }}
           >
-            Entrar na plataforma
+            {carregando ? "Entrando..." : "Entrar na plataforma"}
           </button>
 
           <button
