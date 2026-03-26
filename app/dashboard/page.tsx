@@ -14,7 +14,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-import { getMessaging, getToken } from "firebase/messaging";
+import { getMessaging, getToken, isSupported } from "firebase/messaging";
 import { onAuthStateChanged } from "firebase/auth";
 
 import db from "../firebaseDb";
@@ -22,7 +22,6 @@ import app from "../firebase";
 import auth from "../firebaseAuth";
 import { acessoBloqueado } from "@/utils/acesso";
 import { calcularFimTrial, getValorPlano } from "@/utils/plano";
-import { processarAutomacaoAssinaturas } from "@/utils/automacaoAssinatura";
 
 async function registrarPush() {
   try {
@@ -37,6 +36,13 @@ async function registrarPush() {
 
     if (!("Notification" in window)) {
       console.log("Este navegador não suporta notificações.");
+      return;
+    }
+
+    const supported = await isSupported().catch(() => false);
+
+    if (!supported) {
+      console.log("Firebase Messaging não suportado neste navegador.");
       return;
     }
 
@@ -181,6 +187,7 @@ const atalhosCarousel: CardCarouselItem[] = [
 export default function DashboardPage() {
   const router = useRouter();
   const carouselRef = useRef<HTMLDivElement | null>(null);
+  const mountedRef = useRef(true);
 
   const [indiceAtual, setIndiceAtual] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
@@ -192,6 +199,13 @@ export default function DashboardPage() {
   const [financeiro, setFinanceiro] = useState<RegistroFinanceiro[]>([]);
   const [carregandoMetricas, setCarregandoMetricas] = useState(true);
   const [dadosUsuario, setDadosUsuario] = useState<PersonalData | null>(null);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     function handleResize() {
@@ -226,17 +240,14 @@ export default function DashboardPage() {
 
       async function carregarDashboard() {
         try {
-          setCarregandoMetricas(true);
+          if (mountedRef.current) {
+            setCarregandoMetricas(true);
+          }
 
-          console.log("1 - lendo users");
           const personalRef = doc(db, "users", currentUser.uid);
           const personalSnap = await getDoc(personalRef);
 
-          console.log("UID logado:", currentUser.uid);
-          console.log("Documento existe?", personalSnap.exists());
-
           if (!personalSnap.exists()) {
-            console.log("Documento do usuário não encontrado em /users/{uid}");
             router.push("/bloqueado");
             return;
           }
@@ -244,11 +255,6 @@ export default function DashboardPage() {
           const personal = personalSnap.data() as PersonalData;
           const isAdminAtual = personal?.tipo === "admin";
 
-          console.log("Dados do usuário:", personal);
-          console.log("Tipo:", personal?.tipo);
-          console.log("isAdmin:", isAdminAtual);
-
-          console.log("2 - atualizando campos assinatura, se necessário");
           const precisaAtualizarCamposDeAssinatura =
             !personal.plano ||
             personal.valorPlano === undefined ||
@@ -285,11 +291,9 @@ export default function DashboardPage() {
             });
           }
 
-          console.log("3 - relendo user atualizado");
           const personalAtualizadoSnap = await getDoc(personalRef);
 
           if (!personalAtualizadoSnap.exists()) {
-            console.log("Documento sumiu após atualização");
             router.push("/bloqueado");
             return;
           }
@@ -297,8 +301,9 @@ export default function DashboardPage() {
           const personalAtualizado =
             personalAtualizadoSnap.data() as PersonalData;
 
-          console.log("Dados atualizados:", personalAtualizado);
-          setDadosUsuario(personalAtualizado);
+          if (mountedRef.current) {
+            setDadosUsuario(personalAtualizado);
+          }
 
           const bloqueado = acessoBloqueado({
             statusAcesso: personalAtualizado?.statusAcesso,
@@ -308,30 +313,21 @@ export default function DashboardPage() {
             tipo: personalAtualizado?.tipo,
           });
 
-          console.log("bloqueado:", bloqueado);
-
           if (bloqueado) {
             router.push("/bloqueado");
             return;
           }
 
-          console.log("4 - processando automação");
-          await processarAutomacaoAssinaturas();
-
-          console.log("5 - registrando push");
           await registrarPush();
 
-          console.log("6 - lendo students");
           const alunosSnapshot = await getDocs(
             query(collection(db, "students"), where("userId", "==", currentUser.uid))
           );
 
-          console.log("7 - lendo agenda");
           const agendaSnapshot = await getDocs(
             query(collection(db, "agenda"), where("userId", "==", currentUser.uid))
           );
 
-          console.log("8 - lendo financeiro");
           const financeiroSnapshot = await getDocs(
             query(collection(db, "financeiro"), where("userId", "==", currentUser.uid))
           );
@@ -351,13 +347,17 @@ export default function DashboardPage() {
             ...docItem.data(),
           })) as RegistroFinanceiro[];
 
-          setAlunos(listaAlunos);
-          setAulas(listaAulas);
-          setFinanceiro(listaFinanceiro);
+          if (mountedRef.current) {
+            setAlunos(listaAlunos);
+            setAulas(listaAulas);
+            setFinanceiro(listaFinanceiro);
+          }
         } catch (error) {
           console.error("ERRO REAL DO DASHBOARD =>", error);
         } finally {
-          setCarregandoMetricas(false);
+          if (mountedRef.current) {
+            setCarregandoMetricas(false);
+          }
         }
       }
 
@@ -475,16 +475,19 @@ export default function DashboardPage() {
   const textoStatusMetricas = useMemo(() => {
     if (carregandoMetricas) return "Carregando métricas...";
 
+    const referenciaTexto = primeiraMaiuscula(
+      new Date().toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric",
+      })
+    );
+
     if (isAdmin) {
-      return `Modo administrador ativo em ${primeiraMaiuscula(
-        hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-      )}.`;
+      return `Modo administrador ativo em ${referenciaTexto}.`;
     }
 
-    return `Base integrada com alunos, agenda e financeiro em ${primeiraMaiuscula(
-      hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-    )}.`;
-  }, [carregandoMetricas, hoje, isAdmin]);
+    return `Base integrada com alunos, agenda e financeiro em ${referenciaTexto}.`;
+  }, [carregandoMetricas, isAdmin]);
 
   const heroResponsivo = {
     ...hero,
@@ -494,12 +497,17 @@ export default function DashboardPage() {
       ? "1fr"
       : "1.15fr 0.85fr",
     gap: isMobile ? "14px" : isTablet ? "16px" : "20px",
+    width: "100%",
+    minWidth: 0,
   };
 
   const heroPrincipalResponsivo = {
     ...heroPrincipal,
     padding: isCompact ? "16px" : isMobile ? "18px" : isTablet ? "24px" : "32px",
     borderRadius: isMobile ? "20px" : "30px",
+    minWidth: 0,
+    width: "100%",
+    overflow: "hidden",
   };
 
   const tituloResponsivo = {
@@ -507,6 +515,7 @@ export default function DashboardPage() {
     fontSize: isCompact ? "30px" : isMobile ? "34px" : isTablet ? "44px" : "56px",
     lineHeight: isMobile ? 1.06 : 1.02,
     wordBreak: "break-word" as const,
+    overflowWrap: "anywhere" as const,
   };
 
   const descricaoResponsiva = {
@@ -514,6 +523,7 @@ export default function DashboardPage() {
     maxWidth: "100%",
     fontSize: isMobile ? "15px" : "16px",
     lineHeight: isMobile ? 1.7 : 1.8,
+    wordBreak: "break-word" as const,
   };
 
   const acoesHeroResponsiva = {
@@ -521,40 +531,52 @@ export default function DashboardPage() {
     flexDirection: isMobile ? ("column" as const) : ("row" as const),
     gap: isMobile ? "10px" : "12px",
     marginTop: isMobile ? "20px" : "26px",
+    width: "100%",
   };
 
   const heroLateralResponsiva = {
     ...heroLateral,
     gridTemplateRows: isMobile ? "1fr" : "1fr 1fr",
     gap: isMobile ? "14px" : "18px",
+    width: "100%",
+    minWidth: 0,
   };
 
   const heroResumoCardResponsivo = {
     ...heroResumoCard,
     padding: isCompact ? "16px" : isMobile ? "18px" : "24px",
     borderRadius: isMobile ? "20px" : "26px",
+    minWidth: 0,
+    width: "100%",
+    overflow: "hidden",
   };
 
   const blocoMetricasResponsivo = {
     ...blocoMetricas,
     padding: isCompact ? "14px" : isMobile ? "16px" : isTablet ? "22px" : "28px",
     borderRadius: isMobile ? "20px" : "30px",
+    width: "100%",
+    minWidth: 0,
+    overflow: "hidden",
   };
 
   const metricasHeaderResponsivo = {
     ...metricasHeader,
     gap: isMobile ? "12px" : "16px",
     marginBottom: isMobile ? "16px" : "20px",
+    width: "100%",
   };
 
   const metricasTituloResponsivo = {
     ...metricasTitulo,
     fontSize: isCompact ? "24px" : isMobile ? "26px" : isTablet ? "30px" : "36px",
+    wordBreak: "break-word" as const,
   };
 
   const metricasStatusBoxResponsivo = {
     ...metricasStatusBox,
     width: isMobile ? "100%" : "auto",
+    minWidth: 0,
   };
 
   const gridMetricasResponsivo = {
@@ -565,23 +587,30 @@ export default function DashboardPage() {
       ? "repeat(2, minmax(0, 1fr))"
       : "repeat(4, minmax(0, 1fr))",
     gap: isMobile ? "12px" : "16px",
+    width: "100%",
+    minWidth: 0,
   };
 
   const blocoCarouselResponsivo = {
     ...blocoCarousel,
     padding: isCompact ? "14px" : isMobile ? "16px" : isTablet ? "22px" : "28px",
     borderRadius: isMobile ? "20px" : "30px",
+    width: "100%",
+    minWidth: 0,
+    overflow: "hidden",
   };
 
   const blocoHeaderResponsivo = {
     ...blocoHeader,
     gap: isMobile ? "12px" : "16px",
     marginBottom: isMobile ? "16px" : "20px",
+    width: "100%",
   };
 
   const blocoTituloResponsivo = {
     ...blocoTitulo,
     fontSize: isCompact ? "24px" : isMobile ? "26px" : isTablet ? "30px" : "36px",
+    wordBreak: "break-word" as const,
   };
 
   const carouselTrackResponsivo = {
@@ -594,17 +623,25 @@ export default function DashboardPage() {
       ? "minmax(280px, 320px)"
       : "minmax(320px, 360px)",
     gap: isMobile ? "12px" : "18px",
+    width: "100%",
+    minWidth: 0,
+    WebkitOverflowScrolling: "touch" as const,
+    scrollbarWidth: "none" as const,
   };
 
   const blocoPremiumInfoResponsivo = {
     ...premiumInfoCard,
     padding: isCompact ? "14px" : isMobile ? "16px" : isTablet ? "22px" : "28px",
     borderRadius: isMobile ? "20px" : "30px",
+    width: "100%",
+    minWidth: 0,
+    overflow: "hidden",
   };
 
   const premiumTituloResponsivo = {
     ...premiumTitulo,
     fontSize: isCompact ? "24px" : isMobile ? "26px" : isTablet ? "30px" : "34px",
+    wordBreak: "break-word" as const,
   };
 
   return (
@@ -614,6 +651,7 @@ export default function DashboardPage() {
         gap: isMobile ? "16px" : "26px",
         width: "100%",
         maxWidth: "100%",
+        minWidth: 0,
         overflowX: "hidden",
       }}
     >
