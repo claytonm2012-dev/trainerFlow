@@ -279,9 +279,7 @@ export default function Sidebar() {
 
   const menuVisivel = useMemo(() => {
     return menuItems.filter((item) => {
-      if (item.somenteAdmin) {
-        return tipoUsuario === "admin";
-      }
+      if (item.somenteAdmin) return tipoUsuario === "admin";
       return true;
     });
   }, [tipoUsuario]);
@@ -318,14 +316,20 @@ export default function Sidebar() {
 
   const sidebarResponsiva = {
     ...sidebar,
-    width: isMobile ? "100%" : isTablet ? "100%" : "290px",
-    minWidth: isMobile ? "100%" : isTablet ? "100%" : "290px",
+    width: isMobile ? "100%" : isTablet ? "100%" : "300px",
+    minWidth: isMobile ? "100%" : isTablet ? "100%" : "300px",
     height: isMobile ? "auto" : isTablet ? "auto" : "100vh",
-    position: isMobile ? ("relative" as const) : isTablet ? ("relative" as const) : ("sticky" as const),
+    position: isMobile
+      ? ("relative" as const)
+      : isTablet
+      ? ("relative" as const)
+      : ("sticky" as const),
     top: isMobile ? "auto" : isTablet ? "auto" : 0,
     padding: isCompact ? "12px" : isMobile ? "14px" : isTablet ? "18px" : "22px",
-    borderRight: isMobile ? "none" : isTablet ? "none" : "1px solid rgba(255,255,255,0.08)",
-    borderBottom: isMobile || isTablet ? "1px solid rgba(255,255,255,0.08)" : "none",
+    borderRight:
+      isMobile || isTablet ? "none" : "1px solid rgba(255,255,255,0.08)",
+    borderBottom:
+      isMobile || isTablet ? "1px solid rgba(255,255,255,0.08)" : "none",
     boxShadow:
       isMobile || isTablet
         ? "0 12px 28px rgba(0,0,0,0.20)"
@@ -344,9 +348,9 @@ export default function Sidebar() {
 
   const logoIconeResponsivo = {
     ...logoIcone,
-    width: isCompact ? "44px" : isMobile ? "48px" : "54px",
-    height: isCompact ? "44px" : isMobile ? "48px" : "54px",
-    borderRadius: isCompact ? "14px" : isMobile ? "15px" : "17px",
+    width: isCompact ? "44px" : isMobile ? "48px" : "56px",
+    height: isCompact ? "44px" : isMobile ? "48px" : "56px",
+    borderRadius: isCompact ? "14px" : isMobile ? "15px" : "18px",
     fontSize: isCompact ? "20px" : isMobile ? "22px" : "24px",
   };
 
@@ -397,8 +401,18 @@ export default function Sidebar() {
 
   const rodapeResponsivo = {
     ...rodape,
-    marginTop: isMobile ? "16px" : "24px",
+    marginTop: isMobile ? "18px" : "24px",
     gap: isMobile ? "12px" : "14px",
+    position: "sticky" as const,
+    bottom: 0,
+    paddingTop: "10px",
+    paddingBottom: isMobile ? "4px" : "8px",
+    background:
+      isMobile || isTablet
+        ? "linear-gradient(180deg, rgba(7,13,38,0.75), rgba(7,13,38,0.98))"
+        : "transparent",
+    backdropFilter: isMobile || isTablet ? "blur(14px)" : "none",
+    zIndex: 3,
   };
 
   const rodapeInfoResponsivo = {
@@ -422,6 +436,10 @@ export default function Sidebar() {
     height: isCompact ? "46px" : isMobile ? "48px" : "50px",
     borderRadius: isMobile ? "13px" : "14px",
     fontSize: isCompact ? "13px" : "14px",
+    width: "100%",
+    position: "relative" as const,
+    zIndex: 10,
+    boxShadow: "0 14px 24px rgba(239,68,68,0.16)",
   };
 
   return (
@@ -562,7 +580,8 @@ export default function Sidebar() {
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "none";
+            e.currentTarget.style.boxShadow =
+              "0 14px 24px rgba(239,68,68,0.16)";
           }}
           style={botaoSairResponsivo}
         >
@@ -602,8 +621,8 @@ export default function Sidebar() {
 }
 
 const sidebar = {
-  width: "290px",
-  minWidth: "290px",
+  width: "300px",
+  minWidth: "300px",
   height: "100vh",
   position: "sticky" as const,
   top: 0,
