@@ -198,34 +198,53 @@ const menuItems: MenuItem[] = [
     ),
   },
   {
-  label: "Avisos",
-  rota: "/dashboard/avisos",
-  icon: (
-    <svg viewBox="0 0 24 24" fill="none" style={iconeSvg} aria-hidden="true">
-      <path
-        d="M15 17H20L18.6 15.6C18.2 15.2 18 14.7 18 14.2V10C18 6.7 15.8 4 12.8 3.2C9 2.2 5 5.1 5 9V14.2C5 14.7 4.8 15.2 4.4 15.6L3 17H9"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9 17C9 18.7 10.3 20 12 20C13.7 20 15 18.7 15 17"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  ),
-},
+    label: "Avisos",
+    rota: "/dashboard/avisos",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" style={iconeSvg} aria-hidden="true">
+        <path
+          d="M15 17H20L18.6 15.6C18.2 15.2 18 14.7 18 14.2V10C18 6.7 15.8 4 12.8 3.2C9 2.2 5 5.1 5 9V14.2C5 14.7 4.8 15.2 4.4 15.6L3 17H9"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M9 17C9 18.7 10.3 20 12 20C13.7 20 15 18.7 15 17"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
 ];
 
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
+
   const [rotaPressionada, setRotaPressionada] = useState("");
   const [tipoUsuario, setTipoUsuario] = useState<string>("personal");
   const [carregandoUsuario, setCarregandoUsuario] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    function handleResize() {
+      if (typeof window === "undefined") return;
+      const width = window.innerWidth;
+      setIsMobile(width <= 768);
+      setIsTablet(width <= 1024);
+      setIsCompact(width <= 480);
+    }
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     async function carregarTipoUsuario() {
@@ -263,7 +282,6 @@ export default function Sidebar() {
       if (item.somenteAdmin) {
         return tipoUsuario === "admin";
       }
-
       return true;
     });
   }, [tipoUsuario]);
@@ -298,112 +316,237 @@ export default function Sidebar() {
     }, 90);
   }
 
+  const sidebarResponsiva = {
+    ...sidebar,
+    width: isMobile ? "100%" : isTablet ? "100%" : "290px",
+    minWidth: isMobile ? "100%" : isTablet ? "100%" : "290px",
+    height: isMobile ? "auto" : isTablet ? "auto" : "100vh",
+    position: isMobile ? ("relative" as const) : isTablet ? ("relative" as const) : ("sticky" as const),
+    top: isMobile ? "auto" : isTablet ? "auto" : 0,
+    padding: isCompact ? "12px" : isMobile ? "14px" : isTablet ? "18px" : "22px",
+    borderRight: isMobile ? "none" : isTablet ? "none" : "1px solid rgba(255,255,255,0.08)",
+    borderBottom: isMobile || isTablet ? "1px solid rgba(255,255,255,0.08)" : "none",
+    boxShadow:
+      isMobile || isTablet
+        ? "0 12px 28px rgba(0,0,0,0.20)"
+        : "0 18px 45px rgba(0,0,0,0.28)",
+  };
+
+  const topoResponsivo = {
+    ...topo,
+    gap: isMobile ? "14px" : "20px",
+  };
+
+  const logoBoxResponsivo = {
+    ...logoBox,
+    gap: isCompact ? "10px" : isMobile ? "12px" : "14px",
+  };
+
+  const logoIconeResponsivo = {
+    ...logoIcone,
+    width: isCompact ? "44px" : isMobile ? "48px" : "54px",
+    height: isCompact ? "44px" : isMobile ? "48px" : "54px",
+    borderRadius: isCompact ? "14px" : isMobile ? "15px" : "17px",
+    fontSize: isCompact ? "20px" : isMobile ? "22px" : "24px",
+  };
+
+  const logoTituloResponsivo = {
+    ...logoTitulo,
+    fontSize: isCompact ? "20px" : isMobile ? "22px" : "24px",
+    wordBreak: "break-word" as const,
+  };
+
+  const logoSubtituloResponsivo = {
+    ...logoSubtitulo,
+    fontSize: isCompact ? "11px" : isMobile ? "12px" : "13px",
+  };
+
+  const blocoAtualResponsivo = {
+    ...blocoAtual,
+    padding: isCompact ? "14px" : isMobile ? "16px" : "18px",
+    borderRadius: isMobile ? "18px" : "22px",
+  };
+
+  const blocoAtualTituloResponsivo = {
+    ...blocoAtualTitulo,
+    fontSize: isCompact ? "17px" : isMobile ? "18px" : "20px",
+    wordBreak: "break-word" as const,
+  };
+
+  const menuResponsivo = {
+    ...menu,
+    marginTop: isMobile ? "16px" : "22px",
+    gap: isMobile ? "8px" : "10px",
+  };
+
+  const menuBotaoResponsivoBase = {
+    ...menuBotao,
+    minHeight: isCompact ? "52px" : isMobile ? "54px" : "58px",
+    borderRadius: isMobile ? "14px" : "16px",
+    padding: isCompact ? "0 10px" : isMobile ? "0 12px" : "0 14px",
+    fontSize: isCompact ? "13px" : isMobile ? "14px" : "15px",
+  };
+
+  const menuIconeBoxResponsivo = {
+    ...menuIconeBox,
+    width: isCompact ? "30px" : isMobile ? "32px" : "34px",
+    minWidth: isCompact ? "30px" : isMobile ? "32px" : "34px",
+    height: isCompact ? "30px" : isMobile ? "32px" : "34px",
+    borderRadius: isCompact ? "10px" : isMobile ? "11px" : "12px",
+  };
+
+  const rodapeResponsivo = {
+    ...rodape,
+    marginTop: isMobile ? "16px" : "24px",
+    gap: isMobile ? "12px" : "14px",
+  };
+
+  const rodapeInfoResponsivo = {
+    ...rodapeInfo,
+    padding: isCompact ? "12px" : isMobile ? "14px" : "16px",
+    borderRadius: isMobile ? "16px" : "18px",
+  };
+
+  const rodapeTextoResponsivo = {
+    ...rodapeTexto,
+    fontSize: isCompact ? "14px" : "15px",
+  };
+
+  const rodapeDescricaoResponsivo = {
+    ...rodapeDescricao,
+    fontSize: isCompact ? "12px" : "13px",
+  };
+
+  const botaoSairResponsivo = {
+    ...botaoSair,
+    height: isCompact ? "46px" : isMobile ? "48px" : "50px",
+    borderRadius: isMobile ? "13px" : "14px",
+    fontSize: isCompact ? "13px" : "14px",
+  };
+
   return (
-    <aside style={sidebar}>
+    <aside style={sidebarResponsiva}>
       <div style={sidebarGlowUm}></div>
       <div style={sidebarGlowDois}></div>
 
-      <div style={topo}>
-        <div style={logoBox}>
-          <div style={logoIcone}>T</div>
+      <div>
+        <div style={topoResponsivo}>
+          <div style={logoBoxResponsivo}>
+            <div style={logoIconeResponsivo}>T</div>
 
-          <div>
-            <h1 style={logoTitulo}>TrainerFlow</h1>
-            <p style={logoSubtitulo}>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={logoTituloResponsivo}>TrainerFlow</h1>
+              <p style={logoSubtituloResponsivo}>
+                {carregandoUsuario
+                  ? "Painel profissional"
+                  : tipoUsuario === "admin"
+                  ? "Painel administrador"
+                  : "Painel profissional"}
+              </p>
+            </div>
+          </div>
+
+          <div style={tagPremiumWrapper}>
+            <div style={tagPremiumPing}></div>
+            <div style={tagPremium}>
               {carregandoUsuario
-                ? "Painel profissional"
+                ? "Carregando"
                 : tipoUsuario === "admin"
-                ? "Painel administrador"
-                : "Painel profissional"}
-            </p>
+                ? "Administrador"
+                : "Premium"}
+            </div>
           </div>
         </div>
 
-        <div style={tagPremiumWrapper}>
-          <div style={tagPremiumPing}></div>
-          <div style={tagPremium}>
-            {carregandoUsuario
-              ? "Carregando"
-              : tipoUsuario === "admin"
-              ? "Administrador"
-              : "Premium"}
-          </div>
+        <div style={blocoAtualResponsivo}>
+          <p style={blocoAtualMini}>Área atual</p>
+          <h2 style={blocoAtualTituloResponsivo}>{tituloPagina}</h2>
         </div>
-      </div>
 
-      <div style={blocoAtual}>
-        <p style={blocoAtualMini}>Área atual</p>
-        <h2 style={blocoAtualTitulo}>{tituloPagina}</h2>
-      </div>
+        <nav style={menuResponsivo}>
+          {menuVisivel.map((item) => {
+            const ativo =
+              item.rota === "/dashboard"
+                ? pathname === "/dashboard"
+                : pathname === item.rota || pathname.startsWith(item.rota + "/");
 
-      <nav style={menu}>
-        {menuVisivel.map((item) => {
-          const ativo =
-            item.rota === "/dashboard"
-              ? pathname === "/dashboard"
-              : pathname === item.rota || pathname.startsWith(item.rota + "/");
+            const pressionado = rotaPressionada === item.rota;
 
-          const pressionado = rotaPressionada === item.rota;
+            return (
+              <button
+                key={item.rota}
+                onClick={() => navegarPara(item.rota)}
+                onMouseEnter={(e) => {
+                  if (isMobile || isTablet) return;
+                  e.currentTarget.style.transform = pressionado
+                    ? "scale(0.985)"
+                    : "translateX(4px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateX(0)";
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = "scale(0.985)";
+                }}
+                onMouseUp={(e) => {
+                  if (isMobile || isTablet) {
+                    e.currentTarget.style.transform = "translateX(0)";
+                    return;
+                  }
 
-          return (
-            <button
-              key={item.rota}
-              onClick={() => navegarPara(item.rota)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = pressionado
-                  ? "scale(0.985)"
-                  : "translateX(4px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateX(0)";
-              }}
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = "scale(0.985)";
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = ativo
-                  ? "translateX(0)"
-                  : "translateX(4px)";
-              }}
-              style={{
-                ...menuBotao,
-                ...(ativo ? menuBotaoAtivo : {}),
-                ...(pressionado ? menuBotaoPressionado : {}),
-              }}
-            >
-              <span
+                  e.currentTarget.style.transform = ativo
+                    ? "translateX(0)"
+                    : "translateX(4px)";
+                }}
                 style={{
-                  ...menuIconeBox,
-                  ...(ativo ? menuIconeBoxAtivo : {}),
+                  ...menuBotaoResponsivoBase,
+                  ...(ativo ? menuBotaoAtivo : {}),
+                  ...(pressionado ? menuBotaoPressionado : {}),
                 }}
               >
-                {item.icon}
-              </span>
+                <span
+                  style={{
+                    ...menuIconeBoxResponsivo,
+                    ...(ativo ? menuIconeBoxAtivo : {}),
+                  }}
+                >
+                  {item.icon}
+                </span>
 
-              <span style={menuTexto}>{item.label}</span>
+                <span
+                  style={{
+                    ...menuTexto,
+                    minWidth: 0,
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {item.label}
+                </span>
 
-              <span
-                style={{
-                  ...menuIndicador,
-                  ...(ativo ? menuIndicadorAtivo : {}),
-                }}
-              />
-            </button>
-          );
-        })}
-      </nav>
+                <span
+                  style={{
+                    ...menuIndicador,
+                    ...(ativo ? menuIndicadorAtivo : {}),
+                  }}
+                />
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
-      <div style={rodape}>
-        <div style={rodapeInfo}>
+      <div style={rodapeResponsivo}>
+        <div style={rodapeInfoResponsivo}>
           <p style={rodapeMini}>Sistema</p>
-          <p style={rodapeTexto}>
+          <p style={rodapeTextoResponsivo}>
             {carregandoUsuario
               ? "Versão premium"
               : tipoUsuario === "admin"
               ? "Versão administrador"
               : "Versão premium"}
           </p>
-          <p style={rodapeDescricao}>
+          <p style={rodapeDescricaoResponsivo}>
             Navegação profissional com visual SaaS e acesso rápido às áreas
             principais.
           </p>
@@ -412,6 +555,7 @@ export default function Sidebar() {
         <button
           onClick={sair}
           onMouseEnter={(e) => {
+            if (isMobile || isTablet) return;
             e.currentTarget.style.transform = "translateY(-1px)";
             e.currentTarget.style.boxShadow =
               "0 18px 28px rgba(239,68,68,0.18)";
@@ -420,7 +564,7 @@ export default function Sidebar() {
             e.currentTarget.style.transform = "translateY(0)";
             e.currentTarget.style.boxShadow = "none";
           }}
-          style={botaoSair}
+          style={botaoSairResponsivo}
         >
           <span style={botaoSairIcone}>
             <svg
