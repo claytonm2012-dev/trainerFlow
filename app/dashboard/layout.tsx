@@ -30,7 +30,6 @@ export default function DashboardLayout({
 
     handleResize();
     window.addEventListener("resize", handleResize);
-
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
@@ -52,27 +51,20 @@ export default function DashboardLayout({
     return (
       <div
         style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background:
-            "radial-gradient(circle at top, rgba(37,99,235,0.18), transparent 28%), linear-gradient(180deg, #09112f, #0b0b0d)",
-          color: "#ffffff",
+          ...loadingWrap,
           fontSize: isCompact ? "15px" : isMobile ? "16px" : "18px",
-          fontWeight: 800,
-          padding: "20px",
-          textAlign: "center",
+          padding: isCompact ? "14px" : "20px",
         }}
       >
-        Carregando dashboard...
+        <div style={loadingCard}>
+          <div style={loadingDot}></div>
+          <span>Carregando dashboard...</span>
+        </div>
       </div>
     );
   }
 
-  if (!usuario) {
-    return null;
-  }
+  if (!usuario) return null;
 
   return (
     <div
@@ -84,26 +76,89 @@ export default function DashboardLayout({
       <Sidebar />
 
       <main
-  style={{
-    ...conteudo,
-    paddingTop: isCompact ? "10px" : isMobile ? "12px" : isTablet ? "16px" : "24px",
-    paddingRight: isCompact ? "10px" : isMobile ? "12px" : isTablet ? "16px" : "24px",
-    paddingLeft: isCompact ? "10px" : isMobile ? "12px" : isTablet ? "16px" : "24px",
-    paddingBottom: isCompact ? "110px" : isMobile ? "120px" : isTablet ? "16px" : "24px",
-  }}
->
+        style={{
+          ...conteudo,
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          paddingTop: isCompact
+            ? "10px"
+            : isMobile
+            ? "12px"
+            : isTablet
+            ? "16px"
+            : "24px",
+          paddingRight: isCompact
+            ? "10px"
+            : isMobile
+            ? "12px"
+            : isTablet
+            ? "16px"
+            : "24px",
+          paddingLeft: isCompact
+            ? "10px"
+            : isMobile
+            ? "12px"
+            : isTablet
+            ? "16px"
+            : "24px",
+          paddingBottom: isCompact
+            ? "116px"
+            : isMobile
+            ? "138px"
+            : isTablet
+            ? "18px"
+            : "24px",
+        }}
+      >
+        <div style={fadeTopo}></div>
+
         <div
           style={{
             ...conteudoInterno,
-            minHeight: isTablet ? "auto" : "100vh",
+            minHeight: "100%",
+            paddingBottom: isMobile ? "22px" : "0px",
           }}
+          className="dashboard-page-transition"
         >
           {children}
         </div>
+
+        <div style={fadeRodape}></div>
       </main>
     </div>
   );
 }
+
+const loadingWrap = {
+  minHeight: "100vh",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background:
+    "radial-gradient(circle at top, rgba(37,99,235,0.18), transparent 28%), linear-gradient(180deg, #09112f, #0b0b0d)",
+  color: "#ffffff",
+  fontWeight: 800,
+};
+
+const loadingCard = {
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  padding: "18px 22px",
+  borderRadius: "18px",
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  boxShadow: "0 16px 32px rgba(0,0,0,0.22)",
+  backdropFilter: "blur(14px)",
+};
+
+const loadingDot = {
+  width: "12px",
+  height: "12px",
+  borderRadius: "999px",
+  background: "#60a5fa",
+  boxShadow: "0 0 16px rgba(96,165,250,0.70)",
+};
 
 const layout = {
   display: "flex",
@@ -120,10 +175,34 @@ const conteudo = {
   minWidth: 0,
   width: "100%",
   maxWidth: "100%",
-  overflowX: "hidden" as const,
+  position: "relative" as const,
 };
 
 const conteudoInterno = {
   width: "100%",
   maxWidth: "100%",
+  position: "relative" as const,
+  zIndex: 2,
+};
+
+const fadeTopo = {
+  position: "sticky" as const,
+  top: 0,
+  height: "26px",
+  marginBottom: "-26px",
+  zIndex: 5,
+  pointerEvents: "none" as const,
+  background:
+    "linear-gradient(180deg, rgba(9,17,47,0.95), rgba(9,17,47,0.72), rgba(9,17,47,0))",
+};
+
+const fadeRodape = {
+  position: "sticky" as const,
+  bottom: 0,
+  height: "54px",
+  marginTop: "-54px",
+  zIndex: 5,
+  pointerEvents: "none" as const,
+  background:
+    "linear-gradient(0deg, rgba(9,17,47,0.98), rgba(9,17,47,0.78), rgba(9,17,47,0))",
 };
