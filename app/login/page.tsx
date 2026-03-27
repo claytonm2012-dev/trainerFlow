@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   onAuthStateChanged,
 } from "firebase/auth";
 import auth from "../firebaseAuth";
@@ -16,6 +17,8 @@ export default function LoginPage() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [verificandoSessao, setVerificandoSessao] = useState(true);
+  const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -31,16 +34,17 @@ export default function LoginPage() {
   }, [router]);
 
   async function entrar() {
+    setErro("");
+    setMensagem("");
+
     if (!email.trim() || !senha.trim()) {
-      alert("Preencha e-mail e senha.");
+      setErro("Preencha e-mail e senha.");
       return;
     }
 
     try {
       setCarregando(true);
-
       await signInWithEmailAndPassword(auth, email.trim(), senha);
-
       router.replace("/dashboard");
     } catch (error: any) {
       console.error("Erro ao entrar:", error);
@@ -50,11 +54,41 @@ export default function LoginPage() {
         error?.code === "auth/wrong-password" ||
         error?.code === "auth/user-not-found"
       ) {
-        alert("E-mail ou senha incorretos.");
+        setErro("E-mail ou senha incorretos.");
       } else if (error?.code === "auth/invalid-email") {
-        alert("E-mail inválido.");
+        setErro("Digite um e-mail válido.");
+      } else if (error?.code === "auth/too-many-requests") {
+        setErro("Muitas tentativas. Aguarde um pouco e tente novamente.");
       } else {
-        alert("Não foi possível entrar agora.");
+        setErro("Não foi possível entrar agora.");
+      }
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function recuperarSenha() {
+    setErro("");
+    setMensagem("");
+
+    if (!email.trim()) {
+      setErro("Digite seu e-mail para recuperar a senha.");
+      return;
+    }
+
+    try {
+      setCarregando(true);
+      await sendPasswordResetEmail(auth, email.trim());
+      setMensagem("Enviamos o link de recuperação para seu e-mail.");
+    } catch (error: any) {
+      console.error("Erro ao recuperar senha:", error);
+
+      if (error?.code === "auth/invalid-email") {
+        setErro("Digite um e-mail válido.");
+      } else if (error?.code === "auth/user-not-found") {
+        setErro("Nenhum usuário encontrado com esse e-mail.");
+      } else {
+        setErro("Não foi possível enviar o e-mail de recuperação.");
       }
     } finally {
       setCarregando(false);
@@ -63,416 +97,94 @@ export default function LoginPage() {
 
   if (verificandoSessao) {
     return (
-      <main
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background:
-            "radial-gradient(circle at top, rgba(37,99,235,0.38) 0%, rgba(10,15,35,1) 38%, rgba(4,6,18,1) 100%)",
-          color: "#ffffff",
-          fontFamily: "Arial, Helvetica, sans-serif",
-          fontSize: "18px",
-          fontWeight: 800,
-        }}
-      >
-        Carregando acesso...
+      <main style={loadingMain}>
+        <div style={loadingCard}>
+          <div style={loadingLogo}>T</div>
+          <h1 style={loadingTitle}>TRAINERFLOW</h1>
+          <p style={loadingText}>Carregando acesso...</p>
+        </div>
       </main>
     );
   }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        width: "100%",
-        overflowX: "hidden",
-        background:
-          "radial-gradient(circle at top, rgba(37,99,235,0.40) 0%, rgba(11,17,47,1) 30%, rgba(4,7,20,1) 65%, rgba(2,4,12,1) 100%)",
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px 14px",
-        fontFamily: "Arial, Helvetica, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: "8%",
-          left: "8%",
-          width: "220px",
-          height: "220px",
-          borderRadius: "999px",
-          background: "rgba(34,197,94,0.12)",
-          filter: "blur(70px)",
-          pointerEvents: "none",
-        }}
-      />
+    <main style={mainStyle}>
+      <div style={overlayDark}></div>
+      <div style={overlayGradient}></div>
+      <div style={glowTop}></div>
+      <div style={glowBottom}></div>
 
-      <div
-        style={{
-          position: "absolute",
-          bottom: "12%",
-          right: "8%",
-          width: "240px",
-          height: "240px",
-          borderRadius: "999px",
-          background: "rgba(59,130,246,0.16)",
-          filter: "blur(80px)",
-          pointerEvents: "none",
-        }}
-      />
+      <div style={pageWrap}>
+        <div style={loginCard}>
+          <div style={cardStroke}></div>
 
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "1120px",
-          display: "grid",
-          gridTemplateColumns: "1.08fr 0.92fr",
-          gap: "28px",
-          alignItems: "stretch",
-        }}
-      >
-        <section
-          style={{
-            position: "relative",
-            borderRadius: "34px",
-            overflow: "hidden",
-            minHeight: "700px",
-            background:
-              "linear-gradient(135deg, rgba(10,20,55,0.92), rgba(8,14,34,0.88))",
-            border: "1px solid rgba(255,255,255,0.08)",
-            boxShadow: "0 24px 60px rgba(0,0,0,0.30)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            padding: "34px",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(140deg, rgba(255,255,255,0.06), transparent 32%, transparent 68%, rgba(255,255,255,0.03))",
-              pointerEvents: "none",
-            }}
-          />
-
-          <div style={{ position: "relative", zIndex: 1 }}>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "12px",
-                padding: "10px 14px",
-                borderRadius: "999px",
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                color: "rgba(255,255,255,0.86)",
-                fontSize: "13px",
-                fontWeight: 700,
-              }}
-            >
-              Experiência premium para personal trainers
-            </div>
-
-            <h1
-              style={{
-                margin: "22px 0 0 0",
-                color: "#ffffff",
-                fontSize: "64px",
-                lineHeight: 0.98,
-                fontWeight: 900,
-                letterSpacing: "-2px",
-                maxWidth: "620px",
-              }}
-            >
-              Entre e gerencie seu negócio com ritmo de plataforma premium
-            </h1>
-
-            <p
-              style={{
-                margin: "22px 0 0 0",
-                color: "rgba(255,255,255,0.78)",
-                fontSize: "18px",
-                lineHeight: 1.8,
-                maxWidth: "620px",
-              }}
-            >
-              Controle alunos, agenda, evolução e financeiro com uma interface
-              forte, elegante e feita para uso profissional.
-            </p>
+          <div style={logoBadgeWrap}>
+            <div style={logoBadge}>T</div>
           </div>
 
-          <div
-            style={{
-              position: "relative",
-              zIndex: 1,
-              display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-              gap: "16px",
-            }}
-          >
-            {[
-              ["Alunos", "Cadastre, acompanhe e organize sua base."],
-              ["Agenda", "Visualize atendimentos e mantenha rotina firme."],
-              ["Financeiro", "Controle cobranças, vencimentos e mensalidades."],
-            ].map(([titulo, texto]) => (
-              <div
-                key={titulo}
-                style={{
-                  padding: "18px",
-                  borderRadius: "22px",
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  backdropFilter: "blur(10px)",
-                }}
-              >
-                <h3
-                  style={{
-                    margin: 0,
-                    color: "#ffffff",
-                    fontSize: "18px",
-                    fontWeight: 800,
-                  }}
-                >
-                  {titulo}
-                </h3>
-                <p
-                  style={{
-                    margin: "10px 0 0 0",
-                    color: "rgba(255,255,255,0.72)",
-                    fontSize: "14px",
-                    lineHeight: 1.7,
-                  }}
-                >
-                  {texto}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
+          <h1 style={title}>TRAINERFLOW</h1>
+          <p style={subtitle}>Plataforma premium para personal trainers</p>
 
-        <section
-          style={{
-            borderRadius: "34px",
-            padding: "28px 24px 24px",
-            background: "rgba(255,255,255,0.09)",
-            border: "1px solid rgba(255,255,255,0.14)",
-            backdropFilter: "blur(24px)",
-            WebkitBackdropFilter: "blur(24px)",
-            boxShadow: "0 24px 70px rgba(0,0,0,0.34)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            minHeight: "700px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              marginBottom: "24px",
-            }}
-          >
-            <div
-              style={{
-                width: "86px",
-                height: "86px",
-                borderRadius: "26px",
-                background: "linear-gradient(135deg, #22c55e, #06b6d4)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#fff",
-                fontSize: "42px",
-                fontWeight: 900,
-                boxShadow: "0 0 26px rgba(34,197,94,0.36)",
-                marginBottom: "16px",
-              }}
-            >
-              T
-            </div>
-
-            <h2
-              style={{
-                margin: 0,
-                color: "#ffffff",
-                fontSize: "40px",
-                fontWeight: 900,
-                letterSpacing: "0.6px",
-                textAlign: "center",
-              }}
-            >
-              TRAINERFLOW
-            </h2>
-
-            <p
-              style={{
-                margin: "10px 0 0 0",
-                color: "rgba(255,255,255,0.82)",
-                fontSize: "16px",
-                textAlign: "center",
-                lineHeight: 1.5,
-              }}
-            >
-              Plataforma premium para personal trainers
-            </p>
-          </div>
-
-          <div style={{ display: "grid", gap: "16px" }}>
+          <div style={formArea}>
             <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "10px",
-                  color: "#ffffff",
-                  fontSize: "15px",
-                  fontWeight: 800,
-                }}
-              >
-                E-mail
-              </label>
-
+              <label style={label}>E-mail</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Digite seu e-mail"
-                style={{
-                  width: "100%",
-                  height: "60px",
-                  borderRadius: "18px",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  background: "#ffffff",
-                  color: "#111827",
-                  padding: "0 18px",
-                  fontSize: "16px",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
+                style={input}
               />
             </div>
 
             <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "10px",
-                  color: "#ffffff",
-                  fontSize: "15px",
-                  fontWeight: 800,
-                }}
-              >
-                Senha
-              </label>
+              <label style={label}>Senha</label>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 96px",
-                  gap: "10px",
-                }}
-              >
+              <div style={senhaRow}>
                 <input
                   type={mostrarSenha ? "text" : "password"}
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   placeholder="Digite sua senha"
-                  style={{
-                    width: "100%",
-                    height: "60px",
-                    borderRadius: "18px",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    background: "#ffffff",
-                    color: "#111827",
-                    padding: "0 18px",
-                    fontSize: "16px",
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
+                  style={inputSenha}
                 />
 
                 <button
                   type="button"
                   onClick={() => setMostrarSenha((v) => !v)}
-                  style={{
-                    height: "60px",
-                    borderRadius: "18px",
-                    border: "1px solid rgba(96,165,250,0.28)",
-                    background: "linear-gradient(135deg, #60a5fa, #2563eb)",
-                    color: "#fff",
-                    fontSize: "16px",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    boxShadow: "0 12px 24px rgba(37,99,235,0.20)",
-                  }}
+                  style={botaoVer}
                 >
                   {mostrarSenha ? "Ocultar" : "Ver"}
                 </button>
               </div>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "12px",
-                flexWrap: "wrap",
-                marginTop: "2px",
-              }}
-            >
-              <span
-                style={{
-                  color: "rgba(255,255,255,0.78)",
-                  fontSize: "15px",
-                }}
-              >
-                Acesso seguro
-              </span>
+            <div style={rowInfo}>
+              <span style={safeText}>Acesso seguro</span>
 
               <button
                 type="button"
-                onClick={() => router.push("/recuperar-senha")}
+                onClick={recuperarSenha}
+                disabled={carregando}
                 style={{
-                  border: "none",
-                  borderRadius: "999px",
-                  padding: "10px 16px",
-                  background: "linear-gradient(135deg, #d946ef, #a855f7)",
-                  color: "#fff",
-                  fontSize: "14px",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  boxShadow: "0 10px 20px rgba(168,85,247,0.24)",
+                  ...botaoRecuperar,
+                  opacity: carregando ? 0.7 : 1,
                 }}
               >
                 Esqueci minha senha
               </button>
             </div>
 
+            {erro ? <div style={erroBox}>{erro}</div> : null}
+            {mensagem ? <div style={sucessoBox}>{mensagem}</div> : null}
+
             <button
               type="button"
               onClick={entrar}
               disabled={carregando}
               style={{
-                marginTop: "8px",
-                height: "62px",
-                borderRadius: "20px",
-                border: "1px solid rgba(255,255,255,0.10)",
-                background:
-                  "linear-gradient(135deg, #4ade80 0%, #22c55e 45%, #16a34a 100%)",
-                color: "#ffffff",
-                fontSize: "19px",
-                fontWeight: 900,
-                cursor: "pointer",
-                boxShadow: "0 16px 32px rgba(34,197,94,0.28)",
-                opacity: carregando ? 0.7 : 1,
+                ...botaoEntrar,
+                opacity: carregando ? 0.78 : 1,
               }}
             >
               {carregando ? "Entrando..." : "Entrar na plataforma"}
@@ -481,124 +193,417 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => router.push("/cadastro")}
-              style={{
-                height: "58px",
-                borderRadius: "18px",
-                border: "1px solid rgba(34,211,238,0.18)",
-                background: "linear-gradient(135deg, #22d3ee, #06b6d4)",
-                color: "#ffffff",
-                fontSize: "17px",
-                fontWeight: 800,
-                cursor: "pointer",
-                boxShadow: "0 14px 28px rgba(6,182,212,0.22)",
-              }}
+              style={botaoCriar}
             >
               Criar conta
             </button>
 
-            <div
-              style={{
-                marginTop: "8px",
-                padding: "15px 16px",
-                borderRadius: "18px",
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.10)",
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  textAlign: "center",
-                  color: "rgba(255,255,255,0.78)",
-                  fontSize: "15px",
-                  lineHeight: 1.6,
-                }}
-              >
+            <div style={footerInfo}>
+              <p style={footerInfoText}>
                 Organize alunos, agenda, evolução e financeiro em um só lugar.
               </p>
             </div>
           </div>
-        </section>
+        </div>
       </div>
 
       <style jsx>{`
-        @media (max-width: 980px) {
-          main > div {
-            grid-template-columns: 1fr !important;
-            max-width: 520px !important;
-          }
-        }
-
-        @media (max-width: 980px) {
-          section:first-child {
-            min-height: auto !important;
-            padding: 24px !important;
-          }
-        }
-
-        @media (max-width: 980px) {
-          section:first-child h1 {
-            font-size: 42px !important;
-            line-height: 1.02 !important;
-          }
-        }
-
-        @media (max-width: 980px) {
-          section:first-child > div:last-child {
-            grid-template-columns: 1fr !important;
-          }
-        }
-
-        @media (max-width: 980px) {
-          section:last-child {
-            min-height: auto !important;
-          }
-        }
-
-        @media (max-width: 640px) {
-          section:first-child {
-            display: none !important;
-          }
-        }
-
         @media (max-width: 640px) {
           main {
             padding: 16px 12px !important;
           }
-        }
 
-        @media (max-width: 640px) {
-          section:last-child {
-            padding: 24px 16px 18px !important;
+          .login-card-responsive {
+            max-width: 100% !important;
+            padding: 22px 16px 16px !important;
             border-radius: 28px !important;
           }
-        }
 
-        @media (max-width: 640px) {
-          section:last-child h2 {
+          .logo-badge-responsive {
+            width: 72px !important;
+            height: 72px !important;
             font-size: 34px !important;
+            border-radius: 22px !important;
           }
-        }
 
-        @media (max-width: 640px) {
-          section:last-child input,
-          section:last-child button {
+          .title-responsive {
+            font-size: 28px !important;
+          }
+
+          .subtitle-responsive {
+            font-size: 14px !important;
+          }
+
+          .senha-grid-responsive {
+            grid-template-columns: 1fr 86px !important;
+            gap: 8px !important;
+          }
+
+          .input-responsive {
+            height: 54px !important;
+            font-size: 15px !important;
+          }
+
+          .button-main-responsive {
             height: 56px !important;
+            font-size: 17px !important;
+          }
+
+          .button-secondary-responsive {
+            height: 54px !important;
+            font-size: 16px !important;
+          }
+
+          .footer-box-responsive {
+            padding: 12px 14px !important;
           }
         }
 
         @media (max-width: 420px) {
-          section:last-child h2 {
-            font-size: 30px !important;
+          .title-responsive {
+            font-size: 25px !important;
           }
-        }
 
-        @media (max-width: 420px) {
-          section:last-child > div:last-child > div:nth-child(2) > div {
-            grid-template-columns: 1fr 84px !important;
+          .subtitle-responsive {
+            font-size: 13px !important;
+          }
+
+          .senha-grid-responsive {
+            grid-template-columns: 1fr 78px !important;
+          }
+
+          .recover-button-responsive {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+
+          .row-info-responsive {
+            flex-direction: column !important;
+            align-items: stretch !important;
           }
         }
       `}</style>
     </main>
   );
 }
+
+const loadingMain = {
+  minHeight: "100vh",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background:
+    "radial-gradient(circle at top, rgba(37,99,235,0.35) 0%, rgba(9,17,47,1) 38%, rgba(11,11,13,1) 100%)",
+  padding: "20px",
+  fontFamily: "Arial, Helvetica, sans-serif",
+};
+
+const loadingCard = {
+  width: "100%",
+  maxWidth: "420px",
+  borderRadius: "28px",
+  padding: "28px",
+  background: "rgba(255,255,255,0.08)",
+  border: "1px solid rgba(255,255,255,0.14)",
+  backdropFilter: "blur(18px)",
+  textAlign: "center" as const,
+  boxShadow: "0 24px 60px rgba(0,0,0,0.30)",
+};
+
+const loadingLogo = {
+  width: "72px",
+  height: "72px",
+  margin: "0 auto 16px",
+  borderRadius: "22px",
+  background: "linear-gradient(135deg, #22c55e, #06b6d4)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "#ffffff",
+  fontSize: "34px",
+  fontWeight: 900,
+  boxShadow: "0 0 24px rgba(34,197,94,0.30)",
+};
+
+const loadingTitle = {
+  margin: 0,
+  color: "#ffffff",
+  fontSize: "30px",
+  fontWeight: 900,
+};
+
+const loadingText = {
+  margin: "10px 0 0 0",
+  color: "rgba(255,255,255,0.78)",
+  fontSize: "15px",
+};
+
+const mainStyle = {
+  minHeight: "100vh",
+  width: "100%",
+  overflowX: "hidden" as const,
+  position: "relative" as const,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "20px 14px",
+  fontFamily: "Arial, Helvetica, sans-serif",
+  backgroundImage: `url("/images/login-gym-bg.jpg")`,
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat",
+};
+
+const overlayDark = {
+  position: "absolute" as const,
+  inset: 0,
+  background:
+    "linear-gradient(180deg, rgba(2,8,23,0.52) 0%, rgba(2,6,23,0.62) 44%, rgba(2,6,23,0.78) 100%)",
+};
+
+const overlayGradient = {
+  position: "absolute" as const,
+  inset: 0,
+  background:
+    "radial-gradient(circle at top, rgba(37,99,235,0.28) 0%, transparent 35%), radial-gradient(circle at bottom right, rgba(217,70,239,0.16) 0%, transparent 34%), radial-gradient(circle at bottom left, rgba(34,197,94,0.12) 0%, transparent 30%)",
+};
+
+const glowTop = {
+  position: "absolute" as const,
+  top: "7%",
+  left: "50%",
+  transform: "translateX(-50%)",
+  width: "340px",
+  height: "120px",
+  borderRadius: "999px",
+  background: "rgba(34,211,238,0.20)",
+  filter: "blur(80px)",
+  pointerEvents: "none" as const,
+};
+
+const glowBottom = {
+  position: "absolute" as const,
+  bottom: "8%",
+  left: "50%",
+  transform: "translateX(-50%)",
+  width: "300px",
+  height: "160px",
+  borderRadius: "999px",
+  background: "rgba(59,130,246,0.16)",
+  filter: "blur(88px)",
+  pointerEvents: "none" as const,
+};
+
+const pageWrap = {
+  position: "relative" as const,
+  zIndex: 2,
+  width: "100%",
+  maxWidth: "760px",
+  display: "flex",
+  justifyContent: "center",
+};
+
+const loginCard = {
+  width: "100%",
+  maxWidth: "420px",
+  position: "relative" as const,
+  borderRadius: "34px",
+  padding: "26px 18px 18px",
+  background:
+    "linear-gradient(180deg, rgba(19,28,52,0.72) 0%, rgba(17,23,43,0.78) 55%, rgba(23,28,50,0.74) 100%)",
+  border: "1px solid rgba(255,255,255,0.14)",
+  backdropFilter: "blur(22px)",
+  WebkitBackdropFilter: "blur(22px)",
+  boxShadow:
+    "0 24px 70px rgba(0,0,0,0.36), 0 0 0 1px rgba(255,255,255,0.04) inset",
+};
+
+const cardStroke = {
+  position: "absolute" as const,
+  inset: 0,
+  borderRadius: "34px",
+  pointerEvents: "none" as const,
+  boxShadow:
+    "0 0 0 1px rgba(255,255,255,0.05) inset, 0 0 34px rgba(34,211,238,0.08)",
+};
+
+const logoBadgeWrap = {
+  display: "flex",
+  justifyContent: "center",
+  marginBottom: "14px",
+};
+
+const logoBadge = {
+  width: "74px",
+  height: "74px",
+  borderRadius: "22px",
+  background: "linear-gradient(135deg, #22c55e, #06b6d4)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "#ffffff",
+  fontSize: "34px",
+  fontWeight: 900,
+  boxShadow: "0 0 26px rgba(34,197,94,0.34)",
+};
+
+const title = {
+  margin: 0,
+  textAlign: "center" as const,
+  color: "#ffffff",
+  fontSize: "34px",
+  fontWeight: 900,
+  letterSpacing: "0.6px",
+};
+
+const subtitle = {
+  margin: "10px 0 0 0",
+  textAlign: "center" as const,
+  color: "rgba(255,255,255,0.84)",
+  fontSize: "15px",
+  lineHeight: 1.5,
+};
+
+const formArea = {
+  marginTop: "22px",
+  display: "grid",
+  gap: "16px",
+};
+
+const label = {
+  display: "block",
+  marginBottom: "10px",
+  color: "#ffffff",
+  fontSize: "15px",
+  fontWeight: 800,
+};
+
+const input = {
+  width: "100%",
+  height: "54px",
+  borderRadius: "18px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.94)",
+  color: "#111827",
+  padding: "0 18px",
+  fontSize: "16px",
+  outline: "none",
+  boxSizing: "border-box" as const,
+  boxShadow: "0 8px 18px rgba(255,255,255,0.06) inset",
+};
+
+const senhaRow = {
+  display: "grid",
+  gridTemplateColumns: "1fr 86px",
+  gap: "8px",
+};
+
+const inputSenha = {
+  width: "100%",
+  height: "54px",
+  borderRadius: "18px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.94)",
+  color: "#111827",
+  padding: "0 18px",
+  fontSize: "16px",
+  outline: "none",
+  boxSizing: "border-box" as const,
+};
+
+const botaoVer = {
+  height: "54px",
+  borderRadius: "18px",
+  border: "1px solid rgba(96,165,250,0.26)",
+  background: "linear-gradient(135deg, #60a5fa, #2563eb)",
+  color: "#ffffff",
+  fontSize: "16px",
+  fontWeight: 800,
+  cursor: "pointer",
+  boxShadow: "0 12px 24px rgba(37,99,235,0.24)",
+};
+
+const rowInfo = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+  flexWrap: "wrap" as const,
+};
+
+const safeText = {
+  color: "rgba(255,255,255,0.80)",
+  fontSize: "15px",
+};
+
+const botaoRecuperar = {
+  border: "none",
+  borderRadius: "999px",
+  padding: "10px 16px",
+  background: "linear-gradient(135deg, #d946ef, #a855f7)",
+  color: "#ffffff",
+  fontSize: "14px",
+  fontWeight: 800,
+  cursor: "pointer",
+  boxShadow: "0 10px 20px rgba(168,85,247,0.24)",
+};
+
+const erroBox = {
+  padding: "12px 14px",
+  borderRadius: "16px",
+  background: "rgba(239,68,68,0.16)",
+  border: "1px solid rgba(239,68,68,0.24)",
+  color: "#fecaca",
+  fontSize: "14px",
+  fontWeight: 700,
+};
+
+const sucessoBox = {
+  padding: "12px 14px",
+  borderRadius: "16px",
+  background: "rgba(34,197,94,0.16)",
+  border: "1px solid rgba(34,197,94,0.24)",
+  color: "#bbf7d0",
+  fontSize: "14px",
+  fontWeight: 700,
+};
+
+const botaoEntrar = {
+  height: "58px",
+  borderRadius: "18px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background:
+    "linear-gradient(135deg, #4ade80 0%, #22c55e 45%, #16a34a 100%)",
+  color: "#ffffff",
+  fontSize: "18px",
+  fontWeight: 900,
+  cursor: "pointer",
+  boxShadow: "0 16px 30px rgba(34,197,94,0.30)",
+};
+
+const botaoCriar = {
+  height: "56px",
+  borderRadius: "18px",
+  border: "1px solid rgba(34,211,238,0.18)",
+  background: "linear-gradient(135deg, #22d3ee, #06b6d4)",
+  color: "#ffffff",
+  fontSize: "17px",
+  fontWeight: 800,
+  cursor: "pointer",
+  boxShadow: "0 14px 28px rgba(6,182,212,0.22)",
+};
+
+const footerInfo = {
+  padding: "14px 14px",
+  borderRadius: "18px",
+  background: "rgba(255,255,255,0.08)",
+  border: "1px solid rgba(255,255,255,0.10)",
+};
+
+const footerInfoText = {
+  margin: 0,
+  textAlign: "center" as const,
+  color: "rgba(255,255,255,0.80)",
+  fontSize: "15px",
+  lineHeight: 1.6,
+};
