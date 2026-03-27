@@ -80,6 +80,8 @@ export default function DashboardLayout({
           ...conteudo,
           overflowY: "auto",
           WebkitOverflowScrolling: "touch",
+          scrollBehavior: "smooth",
+
           paddingTop: isCompact
             ? "10px"
             : isMobile
@@ -87,6 +89,7 @@ export default function DashboardLayout({
             : isTablet
             ? "16px"
             : "24px",
+
           paddingRight: isCompact
             ? "10px"
             : isMobile
@@ -94,6 +97,7 @@ export default function DashboardLayout({
             : isTablet
             ? "16px"
             : "24px",
+
           paddingLeft: isCompact
             ? "10px"
             : isMobile
@@ -101,12 +105,13 @@ export default function DashboardLayout({
             : isTablet
             ? "16px"
             : "24px",
+
           paddingBottom: isCompact
-            ? "116px"
+            ? "140px"
             : isMobile
-            ? "138px"
+            ? "150px"
             : isTablet
-            ? "18px"
+            ? "24px"
             : "24px",
         }}
       >
@@ -115,8 +120,8 @@ export default function DashboardLayout({
         <div
           style={{
             ...conteudoInterno,
-            minHeight: "100%",
-            paddingBottom: isMobile ? "22px" : "0px",
+            minHeight: isTablet ? "auto" : "100vh",
+            paddingBottom: isMobile ? "24px" : "0px",
           }}
           className="dashboard-page-transition"
         >
@@ -166,6 +171,7 @@ const layout = {
   width: "100%",
   maxWidth: "100%",
   overflowX: "hidden" as const,
+  overflowY: "auto" as const,
   background:
     "radial-gradient(circle at top left, rgba(59,130,246,0.10), transparent 28%), radial-gradient(circle at top right, rgba(236,72,153,0.08), transparent 24%), linear-gradient(180deg, #09112f, #0b0b0d)",
 };
@@ -183,6 +189,7 @@ const conteudoInterno = {
   maxWidth: "100%",
   position: "relative" as const,
   zIndex: 2,
+  scrollBehavior: "smooth" as const,
 };
 
 const fadeTopo = {

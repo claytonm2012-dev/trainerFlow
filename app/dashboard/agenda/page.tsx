@@ -34,6 +34,7 @@ type Aula = {
   status?: AulaStatus;
   userId?: string;
 };
+
 type DiaSemanaItem = {
   chave: string;
   label: string;
@@ -118,6 +119,8 @@ const coresAluno = [
 ];
 
 export default function AgendaPage() {
+  const [isMobile, setIsMobile] = useState(false);
+
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [aulas, setAulas] = useState<Aula[]>([]);
 
@@ -158,172 +161,185 @@ export default function AgendaPage() {
 
   const editorRef = useRef<HTMLDivElement | null>(null);
 
-  async function carregarDados() {
-  try {
-    setCarregando(true);
+  useEffect(() => {
+    function handleResize() {
+      if (typeof window === "undefined") return;
+      setIsMobile(window.innerWidth <= 768);
+    }
 
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  async function carregarDados() {
+    try {
+      setCarregando(true);
+
+      const user = auth.currentUser;
+
+      if (!user) {
+        alert("Usuário não autenticado.");
+        setAlunos([]);
+        setAulas([]);
+        setAulasHoje(0);
+        setAulasSemana(0);
+        setAulasMes(0);
+        setPresencasMes(0);
+        setFaltasMes(0);
+        setCanceladasMes(0);
+        setReposicoesMes(0);
+        return;
+      }
+
+      const alunosSnapshot = await getDocs(
+        query(collection(db, "students"), where("userId", "==", user.uid))
+      );
+
+      const agendaSnapshot = await getDocs(
+        query(
+          collection(db, "agenda"),
+          where("userId", "==", user.uid),
+          orderBy("data", "desc")
+        )
+      );
+
+      const alunosLista = alunosSnapshot.docs.map((docItem) => ({
+        id: docItem.id,
+        ...(docItem.data() as any),
+      })) as Aluno[];
+
+      const aulasLista = agendaSnapshot.docs.map((docItem) => ({
+        id: docItem.id,
+        ...(docItem.data() as any),
+      })) as Aula[];
+
+      const hoje = new Date();
+      const hojeISO = hoje.toISOString().split("T")[0];
+
+      const inicioSemanaAtual = getInicioDaSemana(hoje);
+      const fimSemanaAtual = getFimDaSemanaPorInicio(inicioSemanaAtual);
+
+      const totalHoje = aulasLista.filter((aula) => aula.data === hojeISO).length;
+
+      const totalSemanaAtual = aulasLista.filter((aula) => {
+        if (!aula.data) return false;
+        return aula.data >= inicioSemanaAtual && aula.data <= fimSemanaAtual;
+      }).length;
+
+      const mesAtual = hoje.getMonth() + 1;
+      const anoAtual = hoje.getFullYear();
+
+      const aulasDoMesAtual = aulasLista.filter((aula) => {
+        if (!aula.data) return false;
+
+        const partes = aula.data.split("-");
+        if (partes.length < 2) return false;
+
+        const ano = Number(partes[0]);
+        const mes = Number(partes[1]);
+
+        return mes === mesAtual && ano === anoAtual;
+      });
+
+      const totalMesAtual = aulasDoMesAtual.length;
+
+      const totalPresencasMes = aulasDoMesAtual.filter(
+        (aula) => aula.status === "presente"
+      ).length;
+
+      const totalFaltasMes = aulasDoMesAtual.filter(
+        (aula) => aula.status === "faltou"
+      ).length;
+
+      const totalCanceladasMes = aulasDoMesAtual.filter(
+        (aula) => aula.status === "cancelado"
+      ).length;
+
+      const totalReposicoesMes = aulasDoMesAtual.filter(
+        (aula) => aula.reposicao === "sim"
+      ).length;
+
+      setAlunos(alunosLista);
+      setAulas(aulasLista);
+      setAulasHoje(totalHoje);
+      setAulasSemana(totalSemanaAtual);
+
+      setAulasMes(totalMesAtual);
+      setPresencasMes(totalPresencasMes);
+      setFaltasMes(totalFaltasMes);
+      setCanceladasMes(totalCanceladasMes);
+      setReposicoesMes(totalReposicoesMes);
+    } catch (error) {
+      console.error("Erro ao carregar agenda:", error);
+      alert("Erro ao carregar agenda");
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  useEffect(() => {
     const user = auth.currentUser;
 
     if (!user) {
       alert("Usuário não autenticado.");
-      setAlunos([]);
-      setAulas([]);
-      setAulasHoje(0);
-      setAulasSemana(0);
-      setAulasMes(0);
-      setPresencasMes(0);
-      setFaltasMes(0);
-      setCanceladasMes(0);
-      setReposicoesMes(0);
       return;
     }
 
-    const alunosSnapshot = await getDocs(
-      query(collection(db, "students"), where("userId", "==", user.uid))
-    );
+    carregarDados();
+  }, []);
 
-    const agendaSnapshot = await getDocs(
-      query(
-        collection(db, "agenda"),
-        where("userId", "==", user.uid),
-        orderBy("data", "desc")
-      )
-    );
-
-    const alunosLista = alunosSnapshot.docs.map((docItem) => ({
-      id: docItem.id,
-      ...docItem.data(),
-    })) as Aluno[];
-
-    const aulasLista = agendaSnapshot.docs.map((docItem) => ({
-      id: docItem.id,
-      ...docItem.data(),
-    })) as Aula[];
-
-    const hoje = new Date();
-    const hojeISO = hoje.toISOString().split("T")[0];
-
-    const inicioSemanaAtual = getInicioDaSemana(hoje);
-    const fimSemanaAtual = getFimDaSemanaPorInicio(inicioSemanaAtual);
-
-    const totalHoje = aulasLista.filter((aula) => aula.data === hojeISO).length;
-
-    const totalSemanaAtual = aulasLista.filter((aula) => {
-      if (!aula.data) return false;
-      return aula.data >= inicioSemanaAtual && aula.data <= fimSemanaAtual;
-    }).length;
-
-    const mesAtual = hoje.getMonth() + 1;
-    const anoAtual = hoje.getFullYear();
-
-    const aulasDoMesAtual = aulasLista.filter((aula) => {
-      if (!aula.data) return false;
-
-      const [ano, mes] = aula.data.split("-").map(Number);
-      return mes === mesAtual && ano === anoAtual;
-    });
-
-    const totalMesAtual = aulasDoMesAtual.length;
-
-    const totalPresencasMes = aulasDoMesAtual.filter(
-      (aula) => aula.status === "presente"
-    ).length;
-
-    const totalFaltasMes = aulasDoMesAtual.filter(
-      (aula) => aula.status === "faltou"
-    ).length;
-
-    const totalCanceladasMes = aulasDoMesAtual.filter(
-      (aula) => aula.status === "cancelado"
-    ).length;
-
-    const totalReposicoesMes = aulasDoMesAtual.filter(
-      (aula) => aula.reposicao === "sim"
-    ).length;
-
-    setAlunos(alunosLista);
-    setAulas(aulasLista);
-    setAulasHoje(totalHoje);
-    setAulasSemana(totalSemanaAtual);
-
-    setAulasMes(totalMesAtual);
-    setPresencasMes(totalPresencasMes);
-    setFaltasMes(totalFaltasMes);
-    setCanceladasMes(totalCanceladasMes);
-    setReposicoesMes(totalReposicoesMes);
-  } catch (error) {
-    console.error("Erro ao carregar agenda:", error);
-    alert("Erro ao carregar agenda");
-  } finally {
-    setCarregando(false);
-  }
-}
-
-  useEffect(() => {
-  const user = auth.currentUser;
-
-  if (!user) {
-    alert("Usuário não autenticado.");
-    return;
-  }
-
-  carregarDados();
-}, []);
-
-async function cadastrarAula() {
-  if (!alunoNome) {
-    alert("Selecione um aluno");
-    return;
-  }
-
-  if (!data) {
-    alert("Informe a data");
-    return;
-  }
-
-  if (!hora) {
-    alert("Informe a hora");
-    return;
-  }
-
-  try {
-    setSalvando(true);
-
-    // 👇 AQUI PEGA O USUÁRIO LOGADO
-    
-    const user = auth.currentUser;
-
-    if (!user) {
-      alert("Usuário não autenticado");
+  async function cadastrarAula() {
+    if (!alunoNome) {
+      alert("Selecione um aluno");
       return;
     }
 
-    // 👇 AQUI SALVA NO FIRESTORE
-    await addDoc(collection(db, "agenda"), {
-      alunoNome,
-      data,
-      hora,
-      reposicao,
-      status: "pendente",
-      userId: user.uid, // 🔥 ESSENCIAL
-      criadoEm: serverTimestamp(),
-    });
+    if (!data) {
+      alert("Informe a data");
+      return;
+    }
 
-    alert("Aula cadastrada com sucesso");
+    if (!hora) {
+      alert("Informe a hora");
+      return;
+    }
 
-    setAlunoNome("");
-    setData("");
-    setHora("");
-    setReposicao("nao");
+    try {
+      setSalvando(true);
 
-    await carregarDados();
-  } catch (error) {
-    console.error("Erro ao cadastrar aula:", error);
-    alert("Erro ao cadastrar aula");
-  } finally {
-    setSalvando(false);
+      const user = auth.currentUser;
+
+      if (!user) {
+        alert("Usuário não autenticado");
+        return;
+      }
+
+      await addDoc(collection(db, "agenda"), {
+        alunoNome,
+        data,
+        hora,
+        reposicao,
+        status: "pendente",
+        userId: user.uid,
+        criadoEm: serverTimestamp(),
+      });
+
+      alert("Aula cadastrada com sucesso");
+
+      setAlunoNome("");
+      setData("");
+      setHora("");
+      setReposicao("nao");
+
+      await carregarDados();
+    } catch (error) {
+      console.error("Erro ao cadastrar aula:", error);
+      alert("Erro ao cadastrar aula");
+    } finally {
+      setSalvando(false);
+    }
   }
-}
 
   function abrirEdicao(aula: Aula) {
     setEditandoId(aula.id);
@@ -389,7 +405,6 @@ async function cadastrarAula() {
       setSalvandoEdicao(false);
     }
   }
-
   async function atualizarStatusAula(id: string, novoStatus: AulaStatus) {
     try {
       await updateDoc(doc(db, "agenda", id), {
@@ -493,7 +508,9 @@ async function cadastrarAula() {
     });
 
     Object.keys(estrutura).forEach((chave) => {
-      estrutura[chave].sort((a, b) => (a.hora || "").localeCompare(b.hora || ""));
+      estrutura[chave].sort((a, b) =>
+        (a.hora || "").localeCompare(b.hora || "")
+      );
     });
 
     return estrutura;
@@ -547,7 +564,8 @@ async function cadastrarAula() {
 
   const faltasSemana = useMemo(
     () =>
-      aulasDaSemanaSelecionada.filter((aula) => aula.status === "faltou").length,
+      aulasDaSemanaSelecionada.filter((aula) => aula.status === "faltou")
+        .length,
     [aulasDaSemanaSelecionada]
   );
 
@@ -560,7 +578,8 @@ async function cadastrarAula() {
 
   const reposicoesSemana = useMemo(
     () =>
-      aulasDaSemanaSelecionada.filter((aula) => aula.reposicao === "sim").length,
+      aulasDaSemanaSelecionada.filter((aula) => aula.reposicao === "sim")
+        .length,
     [aulasDaSemanaSelecionada]
   );
 
@@ -622,6 +641,60 @@ async function cadastrarAula() {
       return a.alunoNome.localeCompare(b.alunoNome);
     });
   }, [aulasFiltradasBase]);
+
+  const pagina = {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: isMobile ? "16px" : "24px",
+    padding: isMobile ? "12px" : "20px",
+    maxWidth: "1400px",
+    margin: "0 auto",
+    width: "100%",
+    boxSizing: "border-box" as const,
+  };
+
+  const hero = {
+    display: "grid",
+    gridTemplateColumns: isMobile
+      ? "1fr"
+      : "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: isMobile ? "12px" : "20px",
+    width: "100%",
+  };
+
+  const heroPrincipal = {
+    background: "rgba(255,255,255,0.045)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: isMobile ? "22px" : "28px",
+    padding: isMobile ? "18px" : "28px",
+    boxShadow: "0 18px 38px rgba(0,0,0,0.18)",
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
+    boxSizing: "border-box" as const,
+  };
+
+  const heroResumoGrid = {
+    display: "grid",
+    gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
+    gap: isMobile ? "12px" : "20px",
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
+  };
+
+  const heroResumo = {
+    background:
+      "linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04))",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: isMobile ? "22px" : "28px",
+    padding: isMobile ? "16px" : "24px",
+    boxShadow: "0 18px 38px rgba(0,0,0,0.18)",
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
+    boxSizing: "border-box" as const,
+  };
 
   return (
     <div style={pagina}>
@@ -941,7 +1014,9 @@ async function cadastrarAula() {
 
             <div style={periodoResumoBox}>
               <span style={periodoResumoLabel}>Total na semana</span>
-              <strong style={periodoResumoValor}>{totalSemanaSelecionada}</strong>
+              <strong style={periodoResumoValor}>
+                {totalSemanaSelecionada}
+              </strong>
             </div>
           </div>
 
@@ -991,6 +1066,7 @@ async function cadastrarAula() {
           <div style={gradeWrapper}>
             <div style={gradeHeader}>
               <div style={celulaHorarioHeader}>Horário</div>
+
               {diasSemana.map((dia) => {
                 const totalDia = (mapaSemanal[dia.chave] || []).length;
                 const livres = horariosFixos.length - totalDia;
@@ -1027,105 +1103,118 @@ async function cadastrarAula() {
                           <span style={slotVazioTexto}>Livre</span>
                         </div>
                       ) : (
-                        aulasNoBloco.map((aula) => {
-                          const cor = getCorAluno(aula.alunoNome);
-                          const statusVisual = getStatusVisual(
-                            (aula.status as AulaStatus) || "pendente"
-                          );
+                        <>
+                          {aulasNoBloco.map((aula) => {
+                            const cor = getCorAluno(aula.alunoNome);
+                            const statusVisual = getStatusVisual(
+                              (aula.status as AulaStatus) || "pendente"
+                            );
 
-                          return (
-                            <div
-                              key={aula.id}
-                              style={{
-                                ...blocoAula,
-                                background: cor.fundo,
-                                border: `1px solid ${cor.borda}`,
-                                boxShadow: cor.glow,
-                              }}
-                            >
-                              <div style={blocoAulaTopo}>
-                                <span style={blocoHora}>{aula.hora || horario}</span>
-                                <span
-                                  style={{
-                                    ...reposicaoBadge,
-                                    ...(aula.reposicao === "sim"
-                                      ? reposicaoSim
-                                      : reposicaoNao),
-                                  }}
-                                >
-                                  {aula.reposicao === "sim" ? "Reposição" : "Normal"}
-                                </span>
-                              </div>
-
-                              <div style={{ ...blocoAluno, color: cor.texto }}>
-                                {aula.alunoNome || "Aluno"}
-                              </div>
-
-                              <div style={blocoData}>
-                                {formatarData(aula.data)}
-                              </div>
-
+                            return (
                               <div
+                                key={aula.id}
                                 style={{
-                                  ...statusAula,
-                                  background: statusVisual.background,
-                                  border: statusVisual.border,
-                                  color: statusVisual.color,
+                                  ...blocoAula,
+                                  background: cor.fundo,
+                                  border: `1px solid ${cor.borda}`,
+                                  boxShadow: cor.glow,
                                 }}
                               >
-                                {statusVisual.label}
+                                <div style={blocoAulaTopo}>
+                                  <span style={blocoHora}>
+                                    {aula.hora || horario}
+                                  </span>
+
+                                  <span
+                                    style={{
+                                      ...reposicaoBadge,
+                                      ...(aula.reposicao === "sim"
+                                        ? reposicaoSim
+                                        : reposicaoNao),
+                                    }}
+                                  >
+                                    {aula.reposicao === "sim"
+                                      ? "Reposição"
+                                      : "Normal"}
+                                  </span>
+                                </div>
+
+                                <div style={{ ...blocoAluno, color: cor.texto }}>
+                                  {aula.alunoNome || "Aluno"}
+                                </div>
+
+                                <div style={blocoData}>
+                                  {formatarData(aula.data)}
+                                </div>
+
+                                <div
+                                  style={{
+                                    ...statusAula,
+                                    background: statusVisual.background,
+                                    border: statusVisual.border,
+                                    color: statusVisual.color,
+                                  }}
+                                >
+                                  {statusVisual.label}
+                                </div>
+
+                                <div style={blocoAcoesStatus}>
+                                  <button
+                                    onClick={() =>
+                                      atualizarStatusAula(aula.id, "presente")
+                                    }
+                                    style={botaoPresente}
+                                    title="Marcar presença"
+                                  >
+                                    ✔
+                                  </button>
+
+                                  <button
+                                    onClick={() =>
+                                      atualizarStatusAula(aula.id, "faltou")
+                                    }
+                                    style={botaoFalta}
+                                    title="Marcar falta"
+                                  >
+                                    ✖
+                                  </button>
+
+                                  <button
+                                    onClick={() =>
+                                      atualizarStatusAula(aula.id, "cancelado")
+                                    }
+                                    style={botaoCancelado}
+                                    title="Marcar cancelado"
+                                  >
+                                    ⛔
+                                  </button>
+                                </div>
+
+                                <div style={blocoAcoes}>
+                                  <button
+                                    onClick={() => abrirEdicao(aula)}
+                                    style={botaoMiniEditar}
+                                  >
+                                    Editar
+                                  </button>
+
+                                  <button
+                                    onClick={() => excluirAula(aula.id)}
+                                    style={botaoMiniExcluir}
+                                  >
+                                    Excluir
+                                  </button>
+                                </div>
                               </div>
+                            );
+                          })}
 
-                              <div style={blocoAcoesStatus}>
-                                <button
-                                  onClick={() => atualizarStatusAula(aula.id, "presente")}
-                                  style={botaoPresente}
-                                  title="Marcar presença"
-                                >
-                                  ✔
-                                </button>
-
-                                <button
-                                  onClick={() => atualizarStatusAula(aula.id, "faltou")}
-                                  style={botaoFalta}
-                                  title="Marcar falta"
-                                >
-                                  ✖
-                                </button>
-
-                                <button
-                                  onClick={() =>
-                                    atualizarStatusAula(aula.id, "cancelado")
-                                  }
-                                  style={botaoCancelado}
-                                  title="Marcar cancelado"
-                                >
-                                  ⛔
-                                </button>
-                              </div>
-
-                              <div style={blocoAcoes}>
-                                <button
-                                  onClick={() => abrirEdicao(aula)}
-                                  style={botaoMiniEditar}
-                                >
-                                  Editar
-                                </button>
-
-                                <button
-                                  onClick={() => excluirAula(aula.id)}
-                                  style={botaoMiniExcluir}
-                                >
-                                  Excluir
-                                </button>
-                              </div>
+                          {conflito && (
+                            <div style={alertaConflito}>
+                              Conflito de horário
                             </div>
-                          );
-                        })
-                      )}
-
-                      {conflito && (
-                        <div style={alertaConflito}>Conflito de horário</div>
+                          )}
+                        </>
                       )}
                     </div>
                   );
@@ -1134,7 +1223,6 @@ async function cadastrarAula() {
             ))}
           </div>
         </div>
-
         {editandoId && (
           <div ref={editorRef} style={editorCard}>
             <div style={cardHeader}>
@@ -1265,12 +1353,16 @@ async function cadastrarAula() {
                     <div style={resumoAlunoGrid}>
                       <div style={resumoAlunoInfoBox}>
                         <p style={resumoAlunoInfoLabel}>Presenças</p>
-                        <p style={resumoAlunoInfoValorVerde}>{item.presencas}</p>
+                        <p style={resumoAlunoInfoValorVerde}>
+                          {item.presencas}
+                        </p>
                       </div>
 
                       <div style={resumoAlunoInfoBox}>
                         <p style={resumoAlunoInfoLabel}>Faltas</p>
-                        <p style={resumoAlunoInfoValorVermelho}>{item.faltas}</p>
+                        <p style={resumoAlunoInfoValorVermelho}>
+                          {item.faltas}
+                        </p>
                       </div>
 
                       <div style={resumoAlunoInfoBox}>
@@ -1282,7 +1374,9 @@ async function cadastrarAula() {
 
                       <div style={resumoAlunoInfoBox}>
                         <p style={resumoAlunoInfoLabel}>Reposições</p>
-                        <p style={resumoAlunoInfoValorAzul}>{item.reposicoes}</p>
+                        <p style={resumoAlunoInfoValorAzul}>
+                          {item.reposicoes}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1502,44 +1596,6 @@ function primeiraMaiuscula(texto: string) {
   if (!texto) return "";
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
-
-const pagina = {
-  display: "flex",
-  flexDirection: "column" as const,
-  gap: "24px",
-  padding: "20px",
-  maxWidth: "1400px",
-  margin: "0 auto",
-};
-
-const hero = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-  gap: "20px",
-};
-
-const heroPrincipal = {
-  background: "rgba(255,255,255,0.045)",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: "28px",
-  padding: "28px",
-  boxShadow: "0 18px 38px rgba(0,0,0,0.18)",
-};
-
-const heroResumoGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: "20px",
-};
-
-const heroResumo = {
-  background:
-    "linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04))",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: "28px",
-  padding: "24px",
-  boxShadow: "0 18px 38px rgba(0,0,0,0.18)",
-};
 
 const eyebrow = {
   margin: 0,
@@ -1804,7 +1860,6 @@ const label = {
   fontWeight: 800,
   color: "rgba(255,255,255,0.88)",
 };
-
 const input = {
   width: "100%",
   height: "56px",
@@ -2427,4 +2482,4 @@ const resumoAlunoInfoValorAzul = {
   color: "#93c5fd",
   fontSize: "20px",
   fontWeight: 900,
-};
+}
