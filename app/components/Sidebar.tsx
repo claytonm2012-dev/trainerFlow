@@ -401,24 +401,17 @@ export default function Sidebar() {
 
   const rodapeResponsivo = {
     ...rodape,
-    marginTop: isMobile ? "18px" : "24px",
-    gap: isMobile ? "12px" : "14px",
-    position: "sticky" as const,
-    bottom: 0,
-    paddingTop: "10px",
-    paddingBottom: isMobile ? "4px" : "8px",
-    background:
-      isMobile || isTablet
-        ? "linear-gradient(180deg, rgba(7,13,38,0.75), rgba(7,13,38,0.98))"
-        : "transparent",
-    backdropFilter: isMobile || isTablet ? "blur(14px)" : "none",
-    zIndex: 3,
+    marginTop: isMobile ? "20px" : "28px",
+    gap: isMobile ? "14px" : "16px",
   };
 
   const rodapeInfoResponsivo = {
     ...rodapeInfo,
     padding: isCompact ? "12px" : isMobile ? "14px" : "16px",
     borderRadius: isMobile ? "16px" : "18px",
+    width: "100%",
+    boxSizing: "border-box" as const,
+    overflow: "hidden" as const,
   };
 
   const rodapeTextoResponsivo = {
@@ -429,6 +422,9 @@ export default function Sidebar() {
   const rodapeDescricaoResponsivo = {
     ...rodapeDescricao,
     fontSize: isCompact ? "12px" : "13px",
+    lineHeight: 1.5,
+    wordBreak: "break-word" as const,
+    overflowWrap: "break-word" as const,
   };
 
   const botaoSairResponsivo = {
@@ -437,10 +433,343 @@ export default function Sidebar() {
     borderRadius: isMobile ? "13px" : "14px",
     fontSize: isCompact ? "13px" : "14px",
     width: "100%",
-    position: "relative" as const,
-    zIndex: 10,
     boxShadow: "0 14px 24px rgba(239,68,68,0.16)",
   };
+
+  const mobileTopCard = {
+    position: "relative" as const,
+    zIndex: 3,
+    width: "100%",
+    padding: isCompact ? "14px" : "16px",
+    borderRadius: "22px",
+    background:
+      "linear-gradient(135deg, rgba(16,28,78,0.92), rgba(8,18,58,0.92))",
+    border: "1px solid rgba(255,255,255,0.08)",
+    boxShadow:
+      "0 18px 36px rgba(0,0,0,0.22), 0 0 18px rgba(59,130,246,0.08)",
+    overflow: "hidden" as const,
+  };
+
+  const mobileTopHeader = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+  };
+
+  const mobileBrand = {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    minWidth: 0,
+  };
+
+  const mobileBrandTextWrap = {
+    minWidth: 0,
+    flex: 1,
+  };
+
+  const mobileBrandTitle = {
+    margin: 0,
+    color: "#ffffff",
+    fontSize: isCompact ? "18px" : "20px",
+    fontWeight: 900,
+    lineHeight: 1.05,
+    whiteSpace: "nowrap" as const,
+    overflow: "hidden" as const,
+    textOverflow: "ellipsis" as const,
+  };
+
+  const mobileBrandSubtitle = {
+    margin: "4px 0 0 0",
+    color: "rgba(255,255,255,0.68)",
+    fontSize: "12px",
+    whiteSpace: "nowrap" as const,
+    overflow: "hidden" as const,
+    textOverflow: "ellipsis" as const,
+  };
+
+  const mobileCurrentWrap = {
+    marginTop: "14px",
+    padding: "14px",
+    borderRadius: "18px",
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+  };
+
+  const mobileCurrentMini = {
+    margin: 0,
+    color: "rgba(255,255,255,0.54)",
+    fontSize: "11px",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.7px",
+  };
+
+  const mobileCurrentTitle = {
+    margin: "8px 0 0 0",
+    color: "#ffffff",
+    fontSize: isCompact ? "17px" : "19px",
+    fontWeight: 900,
+    lineHeight: 1.2,
+  };
+
+  const mobileStatusRow = {
+    marginTop: "12px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "10px",
+    flexWrap: "wrap" as const,
+  };
+
+  const mobileStatusPill = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "8px 12px",
+    borderRadius: "999px",
+    background: "rgba(34,197,94,0.14)",
+    border: "1px solid rgba(34,197,94,0.18)",
+    color: "#86efac",
+    fontSize: "12px",
+    fontWeight: 800,
+    letterSpacing: "0.25px",
+  };
+
+  const mobileStatusDot = {
+    width: "8px",
+    height: "8px",
+    borderRadius: "999px",
+    background: "#86efac",
+    boxShadow: "0 0 12px rgba(134,239,172,0.55)",
+  };
+
+  const mobileLogoutButton = {
+    height: "40px",
+    minWidth: "40px",
+    padding: "0 14px",
+    borderRadius: "12px",
+    border: "1px solid rgba(239,68,68,0.18)",
+    background:
+      "linear-gradient(135deg, rgba(239,68,68,0.22), rgba(220,38,38,0.14))",
+    color: "#ffffff",
+    fontSize: "13px",
+    fontWeight: 800,
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    boxShadow: "0 12px 20px rgba(239,68,68,0.14)",
+  };
+
+  const mobileDock = {
+    position: "fixed" as const,
+    left: "10px",
+    right: "10px",
+    bottom: "10px",
+    zIndex: 999,
+    padding: "10px 10px 12px",
+    borderRadius: "24px",
+    background: "rgba(8,18,58,0.88)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    backdropFilter: "blur(18px)",
+    boxShadow:
+      "0 24px 40px rgba(0,0,0,0.28), 0 0 16px rgba(59,130,246,0.08)",
+    overflowX: "auto" as const,
+    overflowY: "hidden" as const,
+    WebkitOverflowScrolling: "touch" as const,
+  };
+
+  const mobileDockTrack = {
+    display: "flex",
+    alignItems: "stretch",
+    gap: "10px",
+    minWidth: "max-content" as const,
+  };
+
+  const mobileDockButtonBase = {
+    minWidth: "78px",
+    maxWidth: "94px",
+    height: "64px",
+    padding: "8px 8px 6px",
+    borderRadius: "18px",
+    border: "1px solid rgba(255,255,255,0.06)",
+    background: "rgba(255,255,255,0.04)",
+    color: "rgba(255,255,255,0.78)",
+    cursor: "pointer",
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "6px",
+    transition: "all 0.18s ease",
+    flexShrink: 0,
+  };
+
+  const mobileDockButtonAtivo = {
+    background:
+      "linear-gradient(135deg, rgba(96,165,250,0.20), rgba(37,99,235,0.12))",
+    color: "#ffffff",
+    border: "1px solid rgba(96,165,250,0.18)",
+    boxShadow:
+      "0 10px 18px rgba(37,99,235,0.16), 0 0 16px rgba(59,130,246,0.10)",
+    transform: "translateY(-2px)",
+  };
+
+  const mobileDockIconWrap = {
+    width: "28px",
+    height: "28px",
+    borderRadius: "10px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  };
+
+  const mobileDockText = {
+    fontSize: "10px",
+    fontWeight: 800,
+    lineHeight: 1.1,
+    textAlign: "center" as const,
+    wordBreak: "break-word" as const,
+  };
+
+  if (isMobile) {
+    return (
+      <>
+        <div style={mobileTopCard}>
+          <div style={sidebarGlowUm}></div>
+          <div style={sidebarGlowDois}></div>
+
+          <div style={mobileTopHeader}>
+            <div style={mobileBrand}>
+              <div style={logoIconeResponsivo}>T</div>
+
+              <div style={mobileBrandTextWrap}>
+                <h1 style={mobileBrandTitle}>TrainerFlow</h1>
+                <p style={mobileBrandSubtitle}>
+                  {carregandoUsuario
+                    ? "Carregando acesso"
+                    : tipoUsuario === "admin"
+                    ? "Painel administrador"
+                    : "Painel profissional"}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={sair}
+              style={mobileLogoutButton}
+              aria-label="Sair da conta"
+            >
+              <span style={botaoSairIcone}>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  style={iconeSvgPequeno}
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M15 17L20 12L15 7"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M20 12H9"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M12 21H6C4.89543 21 4 20.1046 4 19V5C4 3.89543 4.89543 3 6 3H12"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+              Sair
+            </button>
+          </div>
+
+          <div style={mobileCurrentWrap}>
+            <p style={mobileCurrentMini}>Área atual</p>
+            <h2 style={mobileCurrentTitle}>{tituloPagina}</h2>
+
+            <div style={mobileStatusRow}>
+              <div style={mobileStatusPill}>
+                <span style={mobileStatusDot}></span>
+                {carregandoUsuario
+                  ? "Carregando"
+                  : tipoUsuario === "admin"
+                  ? "Administrador"
+                  : "Premium"}
+              </div>
+
+              <div
+                style={{
+                  color: "rgba(255,255,255,0.62)",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                }}
+              >
+                Navegação móvel premium
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ height: "96px" }} />
+
+        <div style={mobileDock}>
+          <div style={mobileDockTrack}>
+            {menuVisivel.map((item) => {
+              const ativo =
+                item.rota === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : pathname === item.rota ||
+                    pathname.startsWith(item.rota + "/");
+
+              const pressionado = rotaPressionada === item.rota;
+
+              return (
+                <button
+                  key={item.rota}
+                  onClick={() => navegarPara(item.rota)}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = "scale(0.97)";
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.transform = ativo
+                      ? "translateY(-2px)"
+                      : "translateY(0)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = ativo
+                      ? "translateY(-2px)"
+                      : "translateY(0)";
+                  }}
+                  style={{
+                    ...mobileDockButtonBase,
+                    ...(ativo ? mobileDockButtonAtivo : {}),
+                    ...(pressionado ? { opacity: 0.9 } : {}),
+                  }}
+                >
+                  <span style={mobileDockIconWrap}>{item.icon}</span>
+                  <span style={mobileDockText}>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <aside style={sidebarResponsiva}>
@@ -565,8 +894,7 @@ export default function Sidebar() {
               : "Versão premium"}
           </p>
           <p style={rodapeDescricaoResponsivo}>
-            Navegação profissional com visual SaaS e acesso rápido às áreas
-            principais.
+            Visual premium com acesso rápido às áreas principais.
           </p>
         </div>
 

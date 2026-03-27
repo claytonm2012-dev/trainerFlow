@@ -84,11 +84,14 @@ export default function DashboardLayout({
       <Sidebar />
 
       <main
-        style={{
-          ...conteudo,
-          padding: isCompact ? "10px" : isMobile ? "12px" : isTablet ? "16px" : "24px",
-        }}
-      >
+  style={{
+    ...conteudo,
+    paddingTop: isCompact ? "10px" : isMobile ? "12px" : isTablet ? "16px" : "24px",
+    paddingRight: isCompact ? "10px" : isMobile ? "12px" : isTablet ? "16px" : "24px",
+    paddingLeft: isCompact ? "10px" : isMobile ? "12px" : isTablet ? "16px" : "24px",
+    paddingBottom: isCompact ? "110px" : isMobile ? "120px" : isTablet ? "16px" : "24px",
+  }}
+>
         <div
           style={{
             ...conteudoInterno,
