@@ -721,15 +721,16 @@ export default function AgendaPage() {
   }, [aulasFiltradasBase]);
 
   const pagina = {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: isMobile ? "16px" : "24px",
-    padding: isMobile ? "12px" : "20px",
-    maxWidth: "1400px",
-    margin: "0 auto",
-    width: "100%",
-    boxSizing: "border-box" as const,
-  };
+  display: "flex",
+  flexDirection: "column" as const,
+  gap: isMobile ? "16px" : "24px",
+  padding: isMobile ? "12px" : "20px",
+  maxWidth: "1400px",
+  margin: "0 auto",
+  width: "100%",
+  boxSizing: "border-box" as const,
+  overflowX: "hidden" as const,
+};
 
   const hero = {
     display: "grid",
@@ -1218,166 +1219,38 @@ export default function AgendaPage() {
             </span>
           </div>
 
-          {isMobile ? (
-  <div style={carrosselDias}>
-    {diasSemana.map((dia) => {
-      const aulasDoDia = mapaSemanal[dia.chave] || [];
-
-      return (
-        <div key={dia.chave} style={cardDiaMobile}>
-          <div style={cardDiaTopoMobile}>
-            <h3 style={cardDiaTituloMobile}>{dia.label}</h3>
-            <span style={cardDiaQtdMobile}>
-              {aulasDoDia.length} {aulasDoDia.length === 1 ? "aula" : "aulas"}
-            </span>
-          </div>
-
-          {aulasDoDia.length === 0 ? (
-            <div style={slotVazioMobile}>Nenhuma aula</div>
-          ) : (
-            <div style={listaAulasMobile}>
-              {aulasDoDia.map((aula) => {
-                const cor = getCorAluno(aula.alunoNome);
-                const statusVisual = getStatusVisual(
-                  (aula.status as AulaStatus) || "pendente"
-                );
-
-                return (
-                  <div
-                    key={aula.id}
-                    style={{
-                      ...blocoAulaMobile,
-                      background: cor.fundo,
-                      border: `1px solid ${cor.borda}`,
-                      boxShadow: cor.glow,
-                    }}
-                  >
-                    <div style={blocoAulaTopo}>
-                      <span style={blocoHora}>{aula.hora || "--:--"}</span>
-
-                      <span
-                        style={{
-                          ...reposicaoBadge,
-                          ...(aula.reposicao === "sim"
-                            ? reposicaoSim
-                            : reposicaoNao),
-                        }}
-                      >
-                        {aula.reposicao === "sim" ? "Reposição" : "Normal"}
-                      </span>
-                    </div>
-
-                    <div style={{ ...blocoAluno, color: cor.texto }}>
-                      {aula.alunoNome || "Aluno"}
-                    </div>
-
-                    <div style={blocoData}>{formatarData(aula.data)}</div>
-
-                    <div
-                      style={{
-                        ...statusAula,
-                        background: statusVisual.background,
-                        border: statusVisual.border,
-                        color: statusVisual.color,
-                      }}
-                    >
-                      {statusVisual.label}
-                    </div>
-
-                    <div style={blocoAcoesStatus}>
-                      <button
-                        onClick={() => atualizarStatusAula(aula.id, "presente")}
-                        style={botaoPresente}
-                      >
-                        ✔
-                      </button>
-
-                      <button
-                        onClick={() => atualizarStatusAula(aula.id, "faltou")}
-                        style={botaoFalta}
-                      >
-                        ✖
-                      </button>
-
-                      <button
-                        onClick={() => atualizarStatusAula(aula.id, "cancelado")}
-                        style={botaoCancelado}
-                      >
-                        ⛔
-                      </button>
-                    </div>
-
-                    <div style={blocoAcoes}>
-                      <button
-                        onClick={() => abrirEdicao(aula)}
-                        style={botaoMiniEditar}
-                      >
-                        Editar
-                      </button>
-
-                      <button
-                        onClick={() => excluirAula(aula.id)}
-                        style={botaoMiniExcluir}
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      );
-    })}
-  </div>
-) : (
-  <div style={gradeWrapper}>
-    {/* tabela desktop */}
-  </div>
-)}
-        
-<div style={gradeHeader}>
-  <div style={celulaHorarioHeader}>Horário</div>
-
-  {diasSemana.map((dia) => {
-    const totalDia = (mapaSemanal[dia.chave] || []).length;
-    const livres = horariosFixos.length - totalDia;
-
-    return (
-      <div key={dia.chave} style={celulaDiaHeader}>
-        <div style={diaHeaderTitulo}>{dia.label}</div>
-        <div style={diaHeaderSubtitulo}>
-          {totalDia} {totalDia === 1 ? "aula" : "aulas"} • {livres} livres
-        </div>
+    {isMobile ? (
+  <div style={mobileSemanaWrapper}>
+    <div style={mobileSemanaHeader}>
+      <div>
+        <h3 style={mobileSemanaTitulo}>Agenda da semana</h3>
+        <p style={mobileSemanaPeriodo}>
+          {formatarData(inicioSemanaSelecionada)} até{" "}
+          {formatarData(fimSemanaSelecionada)}
+        </p>
       </div>
-    );
-  })}
-</div>
+    </div>
 
-  {horariosFixos.map((horario) => (
-    <div key={horario} style={gradeLinha}>
-      <div style={celulaHorario}>{horario}</div>
-
+    <div style={carrosselDias}>
       {diasSemana.map((dia) => {
-        const aulasNoBloco = gradeSemanal[dia.chave]?.[horario] || [];
-        const conflito = aulasNoBloco.length > 1;
+        const aulasDoDia = mapaSemanal[dia.chave] || [];
 
         return (
-          <div
-            key={`${dia.chave}-${horario}`}
-            style={{
-              ...celulaAgenda,
-              ...(conflito ? celulaAgendaConflito : {}),
-            }}
-          >
-            {aulasNoBloco.length === 0 ? (
-              <div style={slotVazio}>
-                <span style={slotVazioTexto}>Livre</span>
-              </div>
+          <div key={dia.chave} style={cardDiaMobile}>
+            <div style={cardDiaTopoMobile}>
+              <h3 style={cardDiaTituloMobile}>{dia.label}</h3>
+
+              <span style={cardDiaQtdMobile}>
+                {aulasDoDia.length}{" "}
+                {aulasDoDia.length === 1 ? "aula" : "aulas"}
+              </span>
+            </div>
+
+            {aulasDoDia.length === 0 ? (
+              <div style={slotVazioMobile}>Nenhuma aula neste dia</div>
             ) : (
-              <>
-                {aulasNoBloco.map((aula) => {
+              <div style={listaAulasMobile}>
+                {aulasDoDia.map((aula) => {
                   const cor = getCorAluno(aula.alunoNome);
                   const statusVisual = getStatusVisual(
                     (aula.status as AulaStatus) || "pendente"
@@ -1387,14 +1260,14 @@ export default function AgendaPage() {
                     <div
                       key={aula.id}
                       style={{
-                        ...blocoAula,
+                        ...blocoAulaMobile,
                         background: cor.fundo,
                         border: `1px solid ${cor.borda}`,
                         boxShadow: cor.glow,
                       }}
                     >
                       <div style={blocoAulaTopo}>
-                        <span style={blocoHora}>{aula.hora || horario}</span>
+                        <span style={blocoHora}>{aula.hora || "--:--"}</span>
 
                         <span
                           style={{
@@ -1469,18 +1342,166 @@ export default function AgendaPage() {
                     </div>
                   );
                 })}
-
-                {conflito && (
-                  <div style={alertaConflito}>Conflito de horário</div>
-                )}
-              </>
+              </div>
             )}
           </div>
         );
       })}
     </div>
-  ))}
-</div>
+  </div>
+) : (
+  <div style={gradeWrapper}>
+    <div style={gradeHeader}>
+      <div style={celulaHorarioHeader}>Horário</div>
+
+      {diasSemana.map((dia) => {
+        const totalDia = (mapaSemanal[dia.chave] || []).length;
+        const livres = horariosFixos.length - totalDia;
+
+        return (
+          <div key={dia.chave} style={celulaDiaHeader}>
+            <div style={diaHeaderTitulo}>{dia.label}</div>
+            <div style={diaHeaderSubtitulo}>
+              {totalDia} {totalDia === 1 ? "aula" : "aulas"} • {livres} livres
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    {horariosFixos.map((horario) => (
+      <div key={horario} style={gradeLinha}>
+        <div style={celulaHorario}>{horario}</div>
+
+        {diasSemana.map((dia) => {
+          const aulasNoBloco = gradeSemanal[dia.chave]?.[horario] || [];
+          const conflito = aulasNoBloco.length > 1;
+
+          return (
+            <div
+              key={`${dia.chave}-${horario}`}
+              style={{
+                ...celulaAgenda,
+                ...(conflito ? celulaAgendaConflito : {}),
+              }}
+            >
+              {aulasNoBloco.length === 0 ? (
+                <div style={slotVazio}>
+                  <span style={slotVazioTexto}>Livre</span>
+                </div>
+              ) : (
+                <>
+                  {aulasNoBloco.map((aula) => {
+                    const cor = getCorAluno(aula.alunoNome);
+                    const statusVisual = getStatusVisual(
+                      (aula.status as AulaStatus) || "pendente"
+                    );
+
+                    return (
+                      <div
+                        key={aula.id}
+                        style={{
+                          ...blocoAula,
+                          background: cor.fundo,
+                          border: `1px solid ${cor.borda}`,
+                          boxShadow: cor.glow,
+                        }}
+                      >
+                        <div style={blocoAulaTopo}>
+                          <span style={blocoHora}>{aula.hora || horario}</span>
+
+                          <span
+                            style={{
+                              ...reposicaoBadge,
+                              ...(aula.reposicao === "sim"
+                                ? reposicaoSim
+                                : reposicaoNao),
+                            }}
+                          >
+                            {aula.reposicao === "sim" ? "Reposição" : "Normal"}
+                          </span>
+                        </div>
+
+                        <div style={{ ...blocoAluno, color: cor.texto }}>
+                          {aula.alunoNome || "Aluno"}
+                        </div>
+
+                        <div style={blocoData}>{formatarData(aula.data)}</div>
+
+                        <div
+                          style={{
+                            ...statusAula,
+                            background: statusVisual.background,
+                            border: statusVisual.border,
+                            color: statusVisual.color,
+                          }}
+                        >
+                          {statusVisual.label}
+                        </div>
+
+                        <div style={blocoAcoesStatus}>
+                          <button
+                            onClick={() =>
+                              atualizarStatusAula(aula.id, "presente")
+                            }
+                            style={botaoPresente}
+                            title="Marcar presença"
+                          >
+                            ✔
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              atualizarStatusAula(aula.id, "faltou")
+                            }
+                            style={botaoFalta}
+                            title="Marcar falta"
+                          >
+                            ✖
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              atualizarStatusAula(aula.id, "cancelado")
+                            }
+                            style={botaoCancelado}
+                            title="Marcar cancelado"
+                          >
+                            ⛔
+                          </button>
+                        </div>
+
+                        <div style={blocoAcoes}>
+                          <button
+                            onClick={() => abrirEdicao(aula)}
+                            style={botaoMiniEditar}
+                          >
+                            Editar
+                          </button>
+
+                          <button
+                            onClick={() => excluirAula(aula.id)}
+                            style={botaoMiniExcluir}
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {conflito && (
+                    <div style={alertaConflito}>Conflito de horário</div>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    ))}
+  </div>
+)}
           <div ref={editorRef} style={editorCard}>
             <div style={cardHeader}>
               <div>
@@ -1899,6 +1920,9 @@ const blocoPrincipal = {
   display: "grid",
   gridTemplateColumns: "1fr",
   gap: "22px",
+  width: "100%",
+  maxWidth: "100%",
+  overflowX: "hidden" as const,
 };
 
 const buscaCard = {
@@ -2414,24 +2438,50 @@ const mobileContainer = {
   gap: "16px",
 };
 
+const mobileSemanaWrapper = {
+  width: "100%",
+  maxWidth: "100%",
+  overflowX: "hidden" as const,
+};
+
+const mobileSemanaHeader = {
+  marginBottom: "12px",
+};
+
+const mobileSemanaTitulo = {
+  margin: 0,
+  fontSize: "18px",
+  fontWeight: 900,
+  color: "#ffffff",
+};
+
+const mobileSemanaPeriodo = {
+  margin: "6px 0 0 0",
+  fontSize: "13px",
+  color: "rgba(255,255,255,0.68)",
+  lineHeight: 1.4,
+};
+
 const carrosselDias = {
   display: "flex",
   gap: "12px",
   overflowX: "auto" as const,
+  overflowY: "hidden" as const,
   scrollSnapType: "x mandatory" as const,
   WebkitOverflowScrolling: "touch" as const,
-  paddingBottom: "8px",
+  padding: "0 4px 8px 4px",
 };
 
 const cardDiaMobile = {
-  minWidth: "100%",
-  maxWidth: "100%",
+  minWidth: "calc(100vw - 64px)",
+  maxWidth: "calc(100vw - 64px)",
   scrollSnapAlign: "start" as const,
-  borderRadius: "20px",
+  borderRadius: "22px",
   background: "rgba(255,255,255,0.04)",
   border: "1px solid rgba(255,255,255,0.08)",
   padding: "14px",
   boxSizing: "border-box" as const,
+  overflow: "hidden" as const,
 };
 
 const cardDiaTopoMobile = {
@@ -2457,6 +2507,7 @@ const cardDiaQtdMobile = {
   color: "#93c5fd",
   fontSize: "12px",
   fontWeight: 800,
+  whiteSpace: "nowrap" as const,
 };
 
 const listaAulasMobile = {
@@ -2470,7 +2521,9 @@ const blocoAulaMobile = {
   padding: "10px",
   display: "flex",
   flexDirection: "column" as const,
-  gap: "6px",
+  gap: "8px",
+  width: "100%",
+  boxSizing: "border-box" as const,
 };
 
 const slotVazioMobile = {
