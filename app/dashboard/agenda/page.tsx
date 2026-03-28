@@ -206,12 +206,12 @@ export default function AgendaPage() {
 
       const alunosLista = alunosSnapshot.docs.map((docItem) => ({
         id: docItem.id,
-        ...(docItem.data() as any),
+        ...docItem.data(),
       })) as Aluno[];
 
       const aulasLista = agendaSnapshot.docs.map((docItem) => ({
         id: docItem.id,
-        ...(docItem.data() as any),
+        ...docItem.data(),
       })) as Aula[];
 
       const hoje = new Date();
@@ -233,12 +233,7 @@ export default function AgendaPage() {
       const aulasDoMesAtual = aulasLista.filter((aula) => {
         if (!aula.data) return false;
 
-        const partes = aula.data.split("-");
-        if (partes.length < 2) return false;
-
-        const ano = Number(partes[0]);
-        const mes = Number(partes[1]);
-
+        const [ano, mes] = aula.data.split("-").map(Number);
         return mes === mesAtual && ano === anoAtual;
       });
 
@@ -405,6 +400,7 @@ export default function AgendaPage() {
       setSalvandoEdicao(false);
     }
   }
+
   async function atualizarStatusAula(id: string, novoStatus: AulaStatus) {
     try {
       await updateDoc(doc(db, "agenda", id), {
@@ -489,7 +485,6 @@ export default function AgendaPage() {
       );
     });
   }, [aulasFiltradasBase, inicioSemanaSelecionada, fimSemanaSelecionada]);
-
   const mapaSemanal = useMemo(() => {
     const estrutura: Record<string, Aula[]> = {
       segunda: [],
@@ -508,9 +503,7 @@ export default function AgendaPage() {
     });
 
     Object.keys(estrutura).forEach((chave) => {
-      estrutura[chave].sort((a, b) =>
-        (a.hora || "").localeCompare(b.hora || "")
-      );
+      estrutura[chave].sort((a, b) => (a.hora || "").localeCompare(b.hora || ""));
     });
 
     return estrutura;
@@ -564,8 +557,7 @@ export default function AgendaPage() {
 
   const faltasSemana = useMemo(
     () =>
-      aulasDaSemanaSelecionada.filter((aula) => aula.status === "faltou")
-        .length,
+      aulasDaSemanaSelecionada.filter((aula) => aula.status === "faltou").length,
     [aulasDaSemanaSelecionada]
   );
 
@@ -578,8 +570,7 @@ export default function AgendaPage() {
 
   const reposicoesSemana = useMemo(
     () =>
-      aulasDaSemanaSelecionada.filter((aula) => aula.reposicao === "sim")
-        .length,
+      aulasDaSemanaSelecionada.filter((aula) => aula.reposicao === "sim").length,
     [aulasDaSemanaSelecionada]
   );
 
@@ -768,16 +759,30 @@ export default function AgendaPage() {
             ) : null}
           </div>
 
-          <div style={buscaLinha}>
+          <div
+            style={{
+              ...buscaLinha,
+              flexDirection: isMobile ? ("column" as const) : ("row" as const),
+            }}
+          >
             <input
               type="text"
               placeholder="Buscar por nome do aluno"
               value={buscaAluno}
               onChange={(e) => setBuscaAluno(e.target.value)}
-              style={inputBusca}
+              style={{
+                ...inputBusca,
+                minWidth: isMobile ? "100%" : "240px",
+              }}
             />
 
-            <button onClick={aplicarFiltroAluno} style={botaoAplicarBusca}>
+            <button
+              onClick={aplicarFiltroAluno}
+              style={{
+                ...botaoAplicarBusca,
+                width: isMobile ? "100%" : "auto",
+              }}
+            >
               Filtrar aluno
             </button>
           </div>
@@ -875,7 +880,12 @@ export default function AgendaPage() {
             </div>
           </div>
 
-          <div style={formGrid}>
+          <div
+            style={{
+              ...formGrid,
+              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+            }}
+          >
             <div style={campo}>
               <label style={label}>Aluno</label>
               <select
@@ -935,7 +945,6 @@ export default function AgendaPage() {
             </button>
           </div>
         </div>
-
         <div style={resumoMensalCard}>
           <div style={cardHeader}>
             <div>
@@ -946,7 +955,14 @@ export default function AgendaPage() {
             </div>
           </div>
 
-          <div style={faixaMensal}>
+          <div
+            style={{
+              ...faixaMensal,
+              gridTemplateColumns: isMobile
+                ? "1fr 1fr"
+                : "repeat(6, minmax(0, 1fr))",
+            }}
+          >
             <div style={analiticaCard}>
               <span style={analiticaRotulo}>Aulas no mês</span>
               <strong style={analiticaValorAzul}>{aulasMes}</strong>
@@ -1003,7 +1019,12 @@ export default function AgendaPage() {
             </div>
           </div>
 
-          <div style={barraPeriodo}>
+          <div
+            style={{
+              ...barraPeriodo,
+              gridTemplateColumns: isMobile ? "1fr" : "1fr auto",
+            }}
+          >
             <div style={periodoBox}>
               <span style={periodoLabel}>Período exibido</span>
               <strong style={periodoValor}>
@@ -1014,13 +1035,18 @@ export default function AgendaPage() {
 
             <div style={periodoResumoBox}>
               <span style={periodoResumoLabel}>Total na semana</span>
-              <strong style={periodoResumoValor}>
-                {totalSemanaSelecionada}
-              </strong>
+              <strong style={periodoResumoValor}>{totalSemanaSelecionada}</strong>
             </div>
           </div>
 
-          <div style={faixaAnalitica}>
+          <div
+            style={{
+              ...faixaAnalitica,
+              gridTemplateColumns: isMobile
+                ? "1fr 1fr"
+                : "repeat(3, minmax(0, 1fr))",
+            }}
+          >
             <div style={analiticaCard}>
               <span style={analiticaRotulo}>Conflitos</span>
               <strong style={analiticaValorVermelho}>{conflitoTotal}</strong>
@@ -1063,165 +1089,280 @@ export default function AgendaPage() {
             </span>
           </div>
 
-          <div style={gradeWrapper}>
-            <div style={gradeHeader}>
-              <div style={celulaHorarioHeader}>Horário</div>
-
+          {isMobile ? (
+            <div style={carrosselDias}>
               {diasSemana.map((dia) => {
-                const totalDia = (mapaSemanal[dia.chave] || []).length;
-                const livres = horariosFixos.length - totalDia;
+                const aulasDoDia = mapaSemanal[dia.chave] || [];
 
                 return (
-                  <div key={dia.chave} style={celulaDiaHeader}>
-                    <div style={diaHeaderTitulo}>{dia.label}</div>
-                    <div style={diaHeaderSubtitulo}>
-                      {totalDia} {totalDia === 1 ? "aula" : "aulas"} • {livres} livres
+                  <div key={dia.chave} style={cardDiaMobile}>
+                    <div style={cardDiaTopoMobile}>
+                      <h3 style={cardDiaTituloMobile}>{dia.label}</h3>
+                      <span style={cardDiaQtdMobile}>
+                        {aulasDoDia.length}{" "}
+                        {aulasDoDia.length === 1 ? "aula" : "aulas"}
+                      </span>
                     </div>
+
+                    {aulasDoDia.length === 0 ? (
+                      <div style={slotVazioMobile}>Nenhuma aula</div>
+                    ) : (
+                      <div style={listaAulasMobile}>
+                        {aulasDoDia.map((aula) => {
+                          const cor = getCorAluno(aula.alunoNome);
+                          const statusVisual = getStatusVisual(
+                            (aula.status as AulaStatus) || "pendente"
+                          );
+
+                          return (
+                            <div
+                              key={aula.id}
+                              style={{
+                                ...blocoAulaMobile,
+                                background: cor.fundo,
+                                border: `1px solid ${cor.borda}`,
+                                boxShadow: cor.glow,
+                              }}
+                            >
+                              <div style={blocoAulaTopo}>
+                                <span style={blocoHora}>{aula.hora || "--:--"}</span>
+                                <span
+                                  style={{
+                                    ...reposicaoBadge,
+                                    ...(aula.reposicao === "sim"
+                                      ? reposicaoSim
+                                      : reposicaoNao),
+                                  }}
+                                >
+                                  {aula.reposicao === "sim" ? "Reposição" : "Normal"}
+                                </span>
+                              </div>
+
+                              <div style={{ ...blocoAluno, color: cor.texto }}>
+                                {aula.alunoNome || "Aluno"}
+                              </div>
+
+                              <div style={blocoData}>{formatarData(aula.data)}</div>
+
+                              <div
+                                style={{
+                                  ...statusAula,
+                                  background: statusVisual.background,
+                                  border: statusVisual.border,
+                                  color: statusVisual.color,
+                                }}
+                              >
+                                {statusVisual.label}
+                              </div>
+
+                              <div style={blocoAcoesStatus}>
+                                <button
+                                  onClick={() =>
+                                    atualizarStatusAula(aula.id, "presente")
+                                  }
+                                  style={botaoPresente}
+                                  title="Marcar presença"
+                                >
+                                  ✔
+                                </button>
+
+                                <button
+                                  onClick={() => atualizarStatusAula(aula.id, "faltou")}
+                                  style={botaoFalta}
+                                  title="Marcar falta"
+                                >
+                                  ✖
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    atualizarStatusAula(aula.id, "cancelado")
+                                  }
+                                  style={botaoCancelado}
+                                  title="Marcar cancelado"
+                                >
+                                  ⛔
+                                </button>
+                              </div>
+
+                              <div style={blocoAcoes}>
+                                <button
+                                  onClick={() => abrirEdicao(aula)}
+                                  style={botaoMiniEditar}
+                                >
+                                  Editar
+                                </button>
+
+                                <button
+                                  onClick={() => excluirAula(aula.id)}
+                                  style={botaoMiniExcluir}
+                                >
+                                  Excluir
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
-
-            {horariosFixos.map((horario) => (
-              <div key={horario} style={gradeLinha}>
-                <div style={celulaHorario}>{horario}</div>
+          ) : (
+            <div style={gradeWrapper}>
+              <div style={gradeHeader}>
+                <div style={celulaHorarioHeader}>Horário</div>
 
                 {diasSemana.map((dia) => {
-                  const aulasNoBloco = gradeSemanal[dia.chave]?.[horario] || [];
-                  const conflito = aulasNoBloco.length > 1;
+                  const totalDia = (mapaSemanal[dia.chave] || []).length;
+                  const livres = horariosFixos.length - totalDia;
 
                   return (
-                    <div
-                      key={`${dia.chave}-${horario}`}
-                      style={{
-                        ...celulaAgenda,
-                        ...(conflito ? celulaAgendaConflito : {}),
-                      }}
-                    >
-                      {aulasNoBloco.length === 0 ? (
-                        <div style={slotVazio}>
-                          <span style={slotVazioTexto}>Livre</span>
-                        </div>
-                      ) : (
-                        <>
-                          {aulasNoBloco.map((aula) => {
-                            const cor = getCorAluno(aula.alunoNome);
-                            const statusVisual = getStatusVisual(
-                              (aula.status as AulaStatus) || "pendente"
-                            );
-
-                            return (
-                              <div
-                                key={aula.id}
-                                style={{
-                                  ...blocoAula,
-                                  background: cor.fundo,
-                                  border: `1px solid ${cor.borda}`,
-                                  boxShadow: cor.glow,
-                                }}
-                              >
-                                <div style={blocoAulaTopo}>
-                                  <span style={blocoHora}>
-                                    {aula.hora || horario}
-                                  </span>
-
-                                  <span
-                                    style={{
-                                      ...reposicaoBadge,
-                                      ...(aula.reposicao === "sim"
-                                        ? reposicaoSim
-                                        : reposicaoNao),
-                                    }}
-                                  >
-                                    {aula.reposicao === "sim"
-                                      ? "Reposição"
-                                      : "Normal"}
-                                  </span>
-                                </div>
-
-                                <div style={{ ...blocoAluno, color: cor.texto }}>
-                                  {aula.alunoNome || "Aluno"}
-                                </div>
-
-                                <div style={blocoData}>
-                                  {formatarData(aula.data)}
-                                </div>
-
-                                <div
-                                  style={{
-                                    ...statusAula,
-                                    background: statusVisual.background,
-                                    border: statusVisual.border,
-                                    color: statusVisual.color,
-                                  }}
-                                >
-                                  {statusVisual.label}
-                                </div>
-
-                                <div style={blocoAcoesStatus}>
-                                  <button
-                                    onClick={() =>
-                                      atualizarStatusAula(aula.id, "presente")
-                                    }
-                                    style={botaoPresente}
-                                    title="Marcar presença"
-                                  >
-                                    ✔
-                                  </button>
-
-                                  <button
-                                    onClick={() =>
-                                      atualizarStatusAula(aula.id, "faltou")
-                                    }
-                                    style={botaoFalta}
-                                    title="Marcar falta"
-                                  >
-                                    ✖
-                                  </button>
-
-                                  <button
-                                    onClick={() =>
-                                      atualizarStatusAula(aula.id, "cancelado")
-                                    }
-                                    style={botaoCancelado}
-                                    title="Marcar cancelado"
-                                  >
-                                    ⛔
-                                  </button>
-                                </div>
-
-                                <div style={blocoAcoes}>
-                                  <button
-                                    onClick={() => abrirEdicao(aula)}
-                                    style={botaoMiniEditar}
-                                  >
-                                    Editar
-                                  </button>
-
-                                  <button
-                                    onClick={() => excluirAula(aula.id)}
-                                    style={botaoMiniExcluir}
-                                  >
-                                    Excluir
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                          {conflito && (
-                            <div style={alertaConflito}>
-                              Conflito de horário
-                            </div>
-                          )}
-                        </>
-                      )}
+                    <div key={dia.chave} style={celulaDiaHeader}>
+                      <div style={diaHeaderTitulo}>{dia.label}</div>
+                      <div style={diaHeaderSubtitulo}>
+                        {totalDia} {totalDia === 1 ? "aula" : "aulas"} • {livres} livres
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            ))}
-          </div>
+
+              {horariosFixos.map((horario) => (
+                <div key={horario} style={gradeLinha}>
+                  <div style={celulaHorario}>{horario}</div>
+
+                  {diasSemana.map((dia) => {
+                    const aulasNoBloco = gradeSemanal[dia.chave]?.[horario] || [];
+                    const conflito = aulasNoBloco.length > 1;
+
+                    return (
+                      <div
+                        key={`${dia.chave}-${horario}`}
+                        style={{
+                          ...celulaAgenda,
+                          ...(conflito ? celulaAgendaConflito : {}),
+                        }}
+                      >
+                        {aulasNoBloco.length === 0 ? (
+                          <div style={slotVazio}>
+                            <span style={slotVazioTexto}>Livre</span>
+                          </div>
+                        ) : (
+                          <>
+                            {aulasNoBloco.map((aula) => {
+                              const cor = getCorAluno(aula.alunoNome);
+                              const statusVisual = getStatusVisual(
+                                (aula.status as AulaStatus) || "pendente"
+                              );
+
+                              return (
+                                <div
+                                  key={aula.id}
+                                  style={{
+                                    ...blocoAula,
+                                    background: cor.fundo,
+                                    border: `1px solid ${cor.borda}`,
+                                    boxShadow: cor.glow,
+                                  }}
+                                >
+                                  <div style={blocoAulaTopo}>
+                                    <span style={blocoHora}>{aula.hora || horario}</span>
+                                    <span
+                                      style={{
+                                        ...reposicaoBadge,
+                                        ...(aula.reposicao === "sim"
+                                          ? reposicaoSim
+                                          : reposicaoNao),
+                                      }}
+                                    >
+                                      {aula.reposicao === "sim" ? "Reposição" : "Normal"}
+                                    </span>
+                                  </div>
+
+                                  <div style={{ ...blocoAluno, color: cor.texto }}>
+                                    {aula.alunoNome || "Aluno"}
+                                  </div>
+
+                                  <div style={blocoData}>
+                                    {formatarData(aula.data)}
+                                  </div>
+
+                                  <div
+                                    style={{
+                                      ...statusAula,
+                                      background: statusVisual.background,
+                                      border: statusVisual.border,
+                                      color: statusVisual.color,
+                                    }}
+                                  >
+                                    {statusVisual.label}
+                                  </div>
+
+                                  <div style={blocoAcoesStatus}>
+                                    <button
+                                      onClick={() =>
+                                        atualizarStatusAula(aula.id, "presente")
+                                      }
+                                      style={botaoPresente}
+                                      title="Marcar presença"
+                                    >
+                                      ✔
+                                    </button>
+
+                                    <button
+                                      onClick={() =>
+                                        atualizarStatusAula(aula.id, "faltou")
+                                      }
+                                      style={botaoFalta}
+                                      title="Marcar falta"
+                                    >
+                                      ✖
+                                    </button>
+
+                                    <button
+                                      onClick={() =>
+                                        atualizarStatusAula(aula.id, "cancelado")
+                                      }
+                                      style={botaoCancelado}
+                                      title="Marcar cancelado"
+                                    >
+                                      ⛔
+                                    </button>
+                                  </div>
+
+                                  <div style={blocoAcoes}>
+                                    <button
+                                      onClick={() => abrirEdicao(aula)}
+                                      style={botaoMiniEditar}
+                                    >
+                                      Editar
+                                    </button>
+
+                                    <button
+                                      onClick={() => excluirAula(aula.id)}
+                                      style={botaoMiniExcluir}
+                                    >
+                                      Excluir
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+
+                            {conflito && (
+                              <div style={alertaConflito}>Conflito de horário</div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         {editandoId && (
           <div ref={editorRef} style={editorCard}>
@@ -1232,7 +1373,12 @@ export default function AgendaPage() {
               </div>
             </div>
 
-            <div style={formGrid}>
+            <div
+              style={{
+                ...formGrid,
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+              }}
+            >
               <div style={campo}>
                 <label style={label}>Aluno</label>
                 <select
@@ -1296,7 +1442,12 @@ export default function AgendaPage() {
               </div>
             </div>
 
-            <div style={acoesEdicao}>
+            <div
+              style={{
+                ...acoesEdicao,
+                flexDirection: isMobile ? ("column" as const) : ("row" as const),
+              }}
+            >
               <button onClick={cancelarEdicao} style={botaoCancelar}>
                 Cancelar
               </button>
@@ -1350,19 +1501,22 @@ export default function AgendaPage() {
                       </div>
                     </div>
 
-                    <div style={resumoAlunoGrid}>
+                    <div
+                      style={{
+                        ...resumoAlunoGrid,
+                        gridTemplateColumns: isMobile
+                          ? "1fr 1fr"
+                          : "repeat(4, minmax(0, 1fr))",
+                      }}
+                    >
                       <div style={resumoAlunoInfoBox}>
                         <p style={resumoAlunoInfoLabel}>Presenças</p>
-                        <p style={resumoAlunoInfoValorVerde}>
-                          {item.presencas}
-                        </p>
+                        <p style={resumoAlunoInfoValorVerde}>{item.presencas}</p>
                       </div>
 
                       <div style={resumoAlunoInfoBox}>
                         <p style={resumoAlunoInfoLabel}>Faltas</p>
-                        <p style={resumoAlunoInfoValorVermelho}>
-                          {item.faltas}
-                        </p>
+                        <p style={resumoAlunoInfoValorVermelho}>{item.faltas}</p>
                       </div>
 
                       <div style={resumoAlunoInfoBox}>
@@ -1374,9 +1528,7 @@ export default function AgendaPage() {
 
                       <div style={resumoAlunoInfoBox}>
                         <p style={resumoAlunoInfoLabel}>Reposições</p>
-                        <p style={resumoAlunoInfoValorAzul}>
-                          {item.reposicoes}
-                        </p>
+                        <p style={resumoAlunoInfoValorAzul}>{item.reposicoes}</p>
                       </div>
                     </div>
                   </div>
@@ -1419,9 +1571,11 @@ export default function AgendaPage() {
                       ...itemAula,
                       border: `1px solid ${cor.borda}`,
                       boxShadow: cor.glow,
+                      flexDirection: isMobile ? ("column" as const) : ("row" as const),
+                      alignItems: isMobile ? ("flex-start" as const) : ("center" as const),
                     }}
                   >
-                    <div>
+                    <div style={{ width: "100%" }}>
                       <h3 style={{ ...itemNome, color: cor.texto }}>
                         {aula.alunoNome || "Aluno"}
                       </h3>
@@ -1442,7 +1596,15 @@ export default function AgendaPage() {
                       </div>
                     </div>
 
-                    <div style={itemAulaDireita}>
+                    <div
+                      style={{
+                        ...itemAulaDireita,
+                        width: isMobile ? "100%" : "auto",
+                        justifyContent: isMobile
+                          ? ("flex-start" as const)
+                          : ("flex-end" as const),
+                      }}
+                    >
                       <div
                         style={{
                           ...badgeReposicao,
@@ -1452,7 +1614,13 @@ export default function AgendaPage() {
                         Reposição: {aula.reposicao === "sim" ? "Sim" : "Não"}
                       </div>
 
-                      <div style={itemListaAcoes}>
+                      <div
+                        style={{
+                          ...itemListaAcoes,
+                          flexWrap: "wrap" as const,
+                          width: isMobile ? "100%" : "auto",
+                        }}
+                      >
                         <button
                           onClick={() => atualizarStatusAula(aula.id, "presente")}
                           style={botaoPresente}
@@ -1860,6 +2028,7 @@ const label = {
   fontWeight: 800,
   color: "rgba(255,255,255,0.88)",
 };
+
 const input = {
   width: "100%",
   height: "56px",
@@ -2045,6 +2214,75 @@ const quadroSemanalInfoTexto = {
   color: "rgba(255,255,255,0.72)",
   fontSize: "15px",
   lineHeight: 1.7,
+};
+
+const carrosselDias = {
+  display: "flex",
+  gap: "14px",
+  overflowX: "auto" as const,
+  scrollSnapType: "x mandatory" as const,
+  WebkitOverflowScrolling: "touch" as const,
+  paddingBottom: "6px",
+};
+
+const cardDiaMobile = {
+  minWidth: "100%",
+  scrollSnapAlign: "start" as const,
+  borderRadius: "22px",
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  padding: "16px",
+  boxSizing: "border-box" as const,
+};
+
+const cardDiaTopoMobile = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "10px",
+  marginBottom: "14px",
+};
+
+const cardDiaTituloMobile = {
+  margin: 0,
+  fontSize: "20px",
+  fontWeight: 900,
+  color: "#ffffff",
+};
+
+const cardDiaQtdMobile = {
+  padding: "8px 12px",
+  borderRadius: "999px",
+  background: "rgba(59,130,246,0.12)",
+  border: "1px solid rgba(59,130,246,0.18)",
+  color: "#93c5fd",
+  fontSize: "12px",
+  fontWeight: 800,
+};
+
+const listaAulasMobile = {
+  display: "flex",
+  flexDirection: "column" as const,
+  gap: "12px",
+};
+
+const blocoAulaMobile = {
+  borderRadius: "18px",
+  padding: "12px",
+  display: "flex",
+  flexDirection: "column" as const,
+  gap: "8px",
+};
+
+const slotVazioMobile = {
+  borderRadius: "16px",
+  border: "1px dashed rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.02)",
+  padding: "22px 14px",
+  textAlign: "center" as const,
+  color: "rgba(255,255,255,0.48)",
+  fontSize: "14px",
+  fontWeight: 700,
 };
 
 const gradeWrapper = {
@@ -2482,4 +2720,4 @@ const resumoAlunoInfoValorAzul = {
   color: "#93c5fd",
   fontSize: "20px",
   fontWeight: 900,
-}
+};
