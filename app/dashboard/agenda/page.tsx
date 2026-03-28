@@ -1338,164 +1338,155 @@ export default function AgendaPage() {
               })}
             </div>
           ) : (
-            <div style={gradeWrapper}>
-              <div style={gradeHeader}>
-                <div style={celulaHorarioHeader}>Horário</div>
+  <div style={gradeWrapper}>
+    ...
+  </div>
+)}
+        
+<div style={gradeHeader}>
+  <div style={celulaHorarioHeader}>Horário</div>
 
-                {diasSemana.map((dia) => {
-                  const totalDia = (mapaSemanal[dia.chave] || []).length;
-                  const livres = horariosFixos.length - totalDia;
+  {diasSemana.map((dia) => {
+    const totalDia = (mapaSemanal[dia.chave] || []).length;
+    const livres = horariosFixos.length - totalDia;
+
+    return (
+      <div key={dia.chave} style={celulaDiaHeader}>
+        <div style={diaHeaderTitulo}>{dia.label}</div>
+        <div style={diaHeaderSubtitulo}>
+          {totalDia} {totalDia === 1 ? "aula" : "aulas"} • {livres} livres
+        </div>
+      </div>
+    );
+  })}
+</div>
+
+  {horariosFixos.map((horario) => (
+    <div key={horario} style={gradeLinha}>
+      <div style={celulaHorario}>{horario}</div>
+
+      {diasSemana.map((dia) => {
+        const aulasNoBloco = gradeSemanal[dia.chave]?.[horario] || [];
+        const conflito = aulasNoBloco.length > 1;
+
+        return (
+          <div
+            key={`${dia.chave}-${horario}`}
+            style={{
+              ...celulaAgenda,
+              ...(conflito ? celulaAgendaConflito : {}),
+            }}
+          >
+            {aulasNoBloco.length === 0 ? (
+              <div style={slotVazio}>
+                <span style={slotVazioTexto}>Livre</span>
+              </div>
+            ) : (
+              <>
+                {aulasNoBloco.map((aula) => {
+                  const cor = getCorAluno(aula.alunoNome);
+                  const statusVisual = getStatusVisual(
+                    (aula.status as AulaStatus) || "pendente"
+                  );
 
                   return (
-                    <div key={dia.chave} style={celulaDiaHeader}>
-                      <div style={diaHeaderTitulo}>{dia.label}</div>
-                      <div style={diaHeaderSubtitulo}>
-                        {totalDia} {totalDia === 1 ? "aula" : "aulas"} • {livres} livres
+                    <div
+                      key={aula.id}
+                      style={{
+                        ...blocoAula,
+                        background: cor.fundo,
+                        border: `1px solid ${cor.borda}`,
+                        boxShadow: cor.glow,
+                      }}
+                    >
+                      <div style={blocoAulaTopo}>
+                        <span style={blocoHora}>{aula.hora || horario}</span>
+
+                        <span
+                          style={{
+                            ...reposicaoBadge,
+                            ...(aula.reposicao === "sim"
+                              ? reposicaoSim
+                              : reposicaoNao),
+                          }}
+                        >
+                          {aula.reposicao === "sim" ? "Reposição" : "Normal"}
+                        </span>
+                      </div>
+
+                      <div style={{ ...blocoAluno, color: cor.texto }}>
+                        {aula.alunoNome || "Aluno"}
+                      </div>
+
+                      <div style={blocoData}>{formatarData(aula.data)}</div>
+
+                      <div
+                        style={{
+                          ...statusAula,
+                          background: statusVisual.background,
+                          border: statusVisual.border,
+                          color: statusVisual.color,
+                        }}
+                      >
+                        {statusVisual.label}
+                      </div>
+
+                      <div style={blocoAcoesStatus}>
+                        <button
+                          onClick={() => atualizarStatusAula(aula.id, "presente")}
+                          style={botaoPresente}
+                          title="Marcar presença"
+                        >
+                          ✔
+                        </button>
+
+                        <button
+                          onClick={() => atualizarStatusAula(aula.id, "faltou")}
+                          style={botaoFalta}
+                          title="Marcar falta"
+                        >
+                          ✖
+                        </button>
+
+                        <button
+                          onClick={() => atualizarStatusAula(aula.id, "cancelado")}
+                          style={botaoCancelado}
+                          title="Marcar cancelado"
+                        >
+                          ⛔
+                        </button>
+                      </div>
+
+                      <div style={blocoAcoes}>
+                        <button
+                          onClick={() => abrirEdicao(aula)}
+                          style={botaoMiniEditar}
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          onClick={() => excluirAula(aula.id)}
+                          style={botaoMiniExcluir}
+                        >
+                          Excluir
+                        </button>
                       </div>
                     </div>
                   );
                 })}
-              </div>
 
-              {horariosFixos.map((horario) => (
-                <div key={horario} style={gradeLinha}>
-                  <div style={celulaHorario}>{horario}</div>
-
-                  {diasSemana.map((dia) => {
-                    const aulasNoBloco = gradeSemanal[dia.chave]?.[horario] || [];
-                    const conflito = aulasNoBloco.length > 1;
-
-                    return (
-                      <div
-                        key={`${dia.chave}-${horario}`}
-                        style={{
-                          ...celulaAgenda,
-                          ...(conflito ? celulaAgendaConflito : {}),
-                        }}
-                      >
-                        {aulasNoBloco.length === 0 ? (
-                          <div style={slotVazio}>
-                            <span style={slotVazioTexto}>Livre</span>
-                          </div>
-                        ) : (
-                          <>
-                            {aulasNoBloco.map((aula) => {
-                              const cor = getCorAluno(aula.alunoNome);
-                              const statusVisual = getStatusVisual(
-                                (aula.status as AulaStatus) || "pendente"
-                              );
-
-                              return (
-                                <div
-                                  key={aula.id}
-                                  style={{
-                                    ...blocoAula,
-                                    background: cor.fundo,
-                                    border: `1px solid ${cor.borda}`,
-                                    boxShadow: cor.glow,
-                                  }}
-                                >
-                                  <div style={blocoAulaTopo}>
-                                    <span style={blocoHora}>{aula.hora || horario}</span>
-
-                                    <span
-                                      style={{
-                                        ...reposicaoBadge,
-                                        ...(aula.reposicao === "sim"
-                                          ? reposicaoSim
-                                          : reposicaoNao),
-                                      }}
-                                    >
-                                      {aula.reposicao === "sim"
-                                        ? "Reposição"
-                                        : "Normal"}
-                                    </span>
-                                  </div>
-
-                                  <div style={{ ...blocoAluno, color: cor.texto }}>
-                                    {aula.alunoNome || "Aluno"}
-                                  </div>
-
-                                  <div style={blocoData}>
-                                    {formatarData(aula.data)}
-                                  </div>
-
-                                  <div
-                                    style={{
-                                      ...statusAula,
-                                      background: statusVisual.background,
-                                      border: statusVisual.border,
-                                      color: statusVisual.color,
-                                    }}
-                                  >
-                                    {statusVisual.label}
-                                  </div>
-
-                                  <div style={blocoAcoesStatus}>
-                                    <button
-                                      onClick={() =>
-                                        atualizarStatusAula(aula.id, "presente")
-                                      }
-                                      style={botaoPresente}
-                                      title="Marcar presença"
-                                    >
-                                      ✔
-                                    </button>
-
-                                    <button
-                                      onClick={() =>
-                                        atualizarStatusAula(aula.id, "faltou")
-                                      }
-                                      style={botaoFalta}
-                                      title="Marcar falta"
-                                    >
-                                      ✖
-                                    </button>
-
-                                    <button
-                                      onClick={() =>
-                                        atualizarStatusAula(aula.id, "cancelado")
-                                      }
-                                      style={botaoCancelado}
-                                      title="Marcar cancelado"
-                                    >
-                                      ⛔
-                                    </button>
-                                  </div>
-
-                                  <div style={blocoAcoes}>
-                                    <button
-                                      onClick={() => abrirEdicao(aula)}
-                                      style={botaoMiniEditar}
-                                    >
-                                      Editar
-                                    </button>
-
-                                    <button
-                                      onClick={() => excluirAula(aula.id)}
-                                      style={botaoMiniExcluir}
-                                    >
-                                      Excluir
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-
-                            {conflito && (
-                              <div style={alertaConflito}>Conflito de horário</div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        {editandoId && (
+                {conflito && (
+                  <div style={alertaConflito}>Conflito de horário</div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  ))}
+</div>
           <div ref={editorRef} style={editorCard}>
             <div style={cardHeader}>
               <div>
@@ -1582,7 +1573,7 @@ export default function AgendaPage() {
               </button>
             </div>
           </div>
-        )}
+        
 
         <div style={resumoPorAlunoCard}>
           <div style={cardHeader}>
@@ -2426,11 +2417,11 @@ const quadroSemanalInfoTexto = {
 const mobileContainer = {
   display: "flex",
   flexDirection: "column" as const,
-  gap: "14px",
+  gap: "16px",
 };
 
 const cardDiaMobile = {
-  borderRadius: "20px",
+  borderRadius: "18px",
   background: "rgba(255,255,255,0.04)",
   border: "1px solid rgba(255,255,255,0.08)",
   padding: "14px",
@@ -2439,51 +2430,37 @@ const cardDiaMobile = {
 const cardDiaTopoMobile = {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "center",
-  gap: "10px",
-  marginBottom: "14px",
+  marginBottom: "10px",
 };
 
 const cardDiaTituloMobile = {
-  margin: 0,
-  fontSize: "20px",
+  fontSize: "16px",
   fontWeight: 900,
-  color: "#ffffff",
 };
 
 const cardDiaQtdMobile = {
-  padding: "8px 12px",
-  borderRadius: "999px",
-  background: "rgba(59,130,246,0.12)",
-  border: "1px solid rgba(59,130,246,0.18)",
-  color: "#93c5fd",
   fontSize: "12px",
-  fontWeight: 800,
+  color: "#93c5fd",
 };
 
 const listaAulasMobile = {
   display: "flex",
   flexDirection: "column" as const,
-  gap: "12px",
+  gap: "10px",
 };
 
 const blocoAulaMobile = {
-  borderRadius: "18px",
-  padding: "12px",
+  borderRadius: "14px",
+  padding: "10px",
   display: "flex",
   flexDirection: "column" as const,
-  gap: "8px",
+  gap: "6px",
 };
 
 const slotVazioMobile = {
-  borderRadius: "16px",
-  border: "1px dashed rgba(255,255,255,0.08)",
-  background: "rgba(255,255,255,0.02)",
-  padding: "22px 14px",
   textAlign: "center" as const,
-  color: "rgba(255,255,255,0.48)",
-  fontSize: "14px",
-  fontWeight: 700,
+  color: "rgba(255,255,255,0.5)",
+  fontSize: "13px",
 };
 
 const gradeWrapper = {
@@ -2527,7 +2504,7 @@ const celulaDiaHeader = {
 };
 
 const diaHeaderTitulo = {
-  fontSize: "13px",
+  fontSize: "12px",
   fontWeight: 900,
   color: "#ffffff",
 };
@@ -2546,25 +2523,25 @@ const gradeLinha = {
 };
 
 const celulaHorario = {
-  minHeight: "72px",
-  padding: "8px 6px",
+  minHeight: "60px", // 🔥 menor
+  padding: "6px 4px", // 🔥 menor
   display: "flex",
-  alignItems: "flex-start",
+  alignItems: "center", // 🔥 centralizado
   justifyContent: "center",
-  fontSize: "11px",
-  fontWeight: 900,
+  fontSize: "10px", // 🔥 menor
+  fontWeight: 800,
   color: "#93c5fd",
   borderRight: "1px solid rgba(255,255,255,0.08)",
   background: "rgba(255,255,255,0.02)",
 };
 
 const celulaAgenda = {
-  minHeight: "72px",
-  padding: "6px",
+  minHeight: "60px",
+  padding: "4px",
   borderRight: "1px solid rgba(255,255,255,0.08)",
   display: "flex",
   flexDirection: "column" as const,
-  gap: "6px",
+  gap: "4px",
   position: "relative" as const,
 };
 
