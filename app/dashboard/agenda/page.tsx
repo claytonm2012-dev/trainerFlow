@@ -232,39 +232,28 @@ export default function AgendaPage() {
 
       const aulasDoMesAtual = aulasLista.filter((aula) => {
         if (!aula.data) return false;
-
         const [ano, mes] = aula.data.split("-").map(Number);
         return mes === mesAtual && ano === anoAtual;
       });
-
-      const totalMesAtual = aulasDoMesAtual.length;
-
-      const totalPresencasMes = aulasDoMesAtual.filter(
-        (aula) => aula.status === "presente"
-      ).length;
-
-      const totalFaltasMes = aulasDoMesAtual.filter(
-        (aula) => aula.status === "faltou"
-      ).length;
-
-      const totalCanceladasMes = aulasDoMesAtual.filter(
-        (aula) => aula.status === "cancelado"
-      ).length;
-
-      const totalReposicoesMes = aulasDoMesAtual.filter(
-        (aula) => aula.reposicao === "sim"
-      ).length;
 
       setAlunos(alunosLista);
       setAulas(aulasLista);
       setAulasHoje(totalHoje);
       setAulasSemana(totalSemanaAtual);
 
-      setAulasMes(totalMesAtual);
-      setPresencasMes(totalPresencasMes);
-      setFaltasMes(totalFaltasMes);
-      setCanceladasMes(totalCanceladasMes);
-      setReposicoesMes(totalReposicoesMes);
+      setAulasMes(aulasDoMesAtual.length);
+      setPresencasMes(
+        aulasDoMesAtual.filter((aula) => aula.status === "presente").length
+      );
+      setFaltasMes(
+        aulasDoMesAtual.filter((aula) => aula.status === "faltou").length
+      );
+      setCanceladasMes(
+        aulasDoMesAtual.filter((aula) => aula.status === "cancelado").length
+      );
+      setReposicoesMes(
+        aulasDoMesAtual.filter((aula) => aula.reposicao === "sim").length
+      );
     } catch (error) {
       console.error("Erro ao carregar agenda:", error);
       alert("Erro ao carregar agenda");
@@ -448,7 +437,6 @@ export default function AgendaPage() {
     setFiltroAluno("");
     setFiltroStatus("todos");
   }
-
   const fimSemanaSelecionada = useMemo(
     () => getFimDaSemanaPorInicio(inicioSemanaSelecionada),
     [inicioSemanaSelecionada]
@@ -485,6 +473,7 @@ export default function AgendaPage() {
       );
     });
   }, [aulasFiltradasBase, inicioSemanaSelecionada, fimSemanaSelecionada]);
+
   const mapaSemanal = useMemo(() => {
     const estrutura: Record<string, Aula[]> = {
       segunda: [],
@@ -646,9 +635,7 @@ export default function AgendaPage() {
 
   const hero = {
     display: "grid",
-    gridTemplateColumns: isMobile
-      ? "1fr"
-      : "repeat(auto-fit, minmax(300px, 1fr))",
+    gridTemplateColumns: "1fr",
     gap: isMobile ? "12px" : "20px",
     width: "100%",
   };
@@ -687,23 +674,82 @@ export default function AgendaPage() {
     boxSizing: "border-box" as const,
   };
 
+  const formGridResponsivo = {
+    ...formGrid,
+    gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+  };
+
+  const faixaMensalResponsiva = {
+    ...faixaMensal,
+    gridTemplateColumns: isMobile ? "1fr" : "repeat(6, minmax(0, 1fr))",
+  };
+
+  const faixaAnaliticaResponsiva = {
+    ...faixaAnalitica,
+    gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+  };
+
+  const barraPeriodoResponsiva = {
+    ...barraPeriodo,
+    gridTemplateColumns: isMobile ? "1fr" : "1fr auto",
+  };
+
+  const acoesEdicaoResponsiva = {
+    ...acoesEdicao,
+    flexDirection: isMobile ? ("column" as const) : ("row" as const),
+  };
+
+  const itemAulaResponsivo = {
+    ...itemAula,
+    flexDirection: isMobile ? ("column" as const) : ("row" as const),
+    alignItems: isMobile ? ("flex-start" as const) : ("center" as const),
+  };
+
+  const itemAulaDireitaResponsivo = {
+    ...itemAulaDireita,
+    width: isMobile ? "100%" : "auto",
+    justifyContent: isMobile ? ("flex-start" as const) : ("flex-end" as const),
+  };
+
+  const itemListaAcoesResponsivo = {
+    ...itemListaAcoes,
+    flexWrap: "wrap" as const,
+  };
+
+  const resumoAlunoGridResponsivo = {
+    ...resumoAlunoGrid,
+    gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, minmax(0, 1fr))",
+  };
   return (
     <div style={pagina}>
       <section style={hero}>
         <div style={heroPrincipal}>
           <p style={eyebrow}>Agenda e controle de aulas</p>
-          <h1 style={titulo}>Agenda</h1>
-          <p style={descricao}>
+          <h1
+            style={{
+              ...titulo,
+              fontSize: isMobile ? "38px" : "52px",
+              lineHeight: isMobile ? 1.08 : 1,
+            }}
+          >
+            Agenda
+          </h1>
+          <p
+            style={{
+              ...descricao,
+              fontSize: isMobile ? "15px" : "17px",
+              lineHeight: isMobile ? 1.65 : 1.8,
+            }}
+          >
             Organize seus atendimentos, registre horários, acompanhe reposições,
-            presença, faltas e visualize a semana em formato de planilha
-            profissional por dia e por horário.
+            presença, faltas e visualize a semana em formato profissional por dia.
           </p>
         </div>
 
         <div style={heroResumoGrid}>
           <div style={heroResumo}>
             <p style={heroResumoRotulo}>Aulas do dia</p>
-            <h2 style={heroResumoValorAzul}>
+            <h2 style={{ ...heroResumoValorAzul, fontSize: isMobile ? "34px" : "42px" }}>
               {filtroAluno || filtroStatus !== "todos"
                 ? aulasFiltradasBase.filter(
                     (aula) => aula.data === new Date().toISOString().split("T")[0]
@@ -715,27 +761,27 @@ export default function AgendaPage() {
 
           <div style={heroResumo}>
             <p style={heroResumoRotulo}>Aulas da semana atual</p>
-            <h2 style={heroResumoValorVerde}>
+            <h2 style={{ ...heroResumoValorVerde, fontSize: isMobile ? "34px" : "42px" }}>
               {filtroAluno || filtroStatus !== "todos"
                 ? aulasDaSemanaSelecionada.length
                 : aulasSemana}
             </h2>
-            <p style={heroResumoTexto}>
-              Visão consolidada da semana em andamento.
-            </p>
+            <p style={heroResumoTexto}>Visão consolidada da semana em andamento.</p>
           </div>
 
           <div style={heroResumo}>
             <p style={heroResumoRotulo}>Aulas no mês</p>
-            <h2 style={heroResumoValorAzul}>{aulasMes}</h2>
-            <p style={heroResumoTexto}>
-              Total de aulas registradas no mês atual.
-            </p>
+            <h2 style={{ ...heroResumoValorAzul, fontSize: isMobile ? "34px" : "42px" }}>
+              {aulasMes}
+            </h2>
+            <p style={heroResumoTexto}>Total de aulas registradas no mês atual.</p>
           </div>
 
           <div style={heroResumo}>
             <p style={heroResumoRotulo}>Presença no mês</p>
-            <h2 style={heroResumoValorVerde}>{percentualPresencaMes}%</h2>
+            <h2 style={{ ...heroResumoValorVerde, fontSize: isMobile ? "34px" : "42px" }}>
+              {percentualPresencaMes}%
+            </h2>
             <p style={heroResumoTexto}>
               Presenças: {presencasMes} • Faltas: {faltasMes} • Canceladas:{" "}
               {canceladasMes}
@@ -749,7 +795,9 @@ export default function AgendaPage() {
           <div style={buscaHeader}>
             <div>
               <p style={cardMini}>Busca e filtros</p>
-              <h2 style={cardTitulo}>Filtrar agenda</h2>
+              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
+                Filtrar agenda
+              </h2>
             </div>
 
             {filtroAluno || filtroStatus !== "todos" ? (
@@ -759,12 +807,7 @@ export default function AgendaPage() {
             ) : null}
           </div>
 
-          <div
-            style={{
-              ...buscaLinha,
-              flexDirection: isMobile ? ("column" as const) : ("row" as const),
-            }}
-          >
+          <div style={buscaLinha}>
             <input
               type="text"
               placeholder="Buscar por nome do aluno"
@@ -776,13 +819,7 @@ export default function AgendaPage() {
               }}
             />
 
-            <button
-              onClick={aplicarFiltroAluno}
-              style={{
-                ...botaoAplicarBusca,
-                width: isMobile ? "100%" : "auto",
-              }}
-            >
+            <button onClick={aplicarFiltroAluno} style={botaoAplicarBusca}>
               Filtrar aluno
             </button>
           </div>
@@ -870,22 +907,24 @@ export default function AgendaPage() {
           </p>
         </div>
 
-        <div style={formCard}>
+        <div
+          style={{
+            ...formCard,
+            padding: isMobile ? "18px" : "30px",
+          }}
+        >
           <div style={cardGlow}></div>
 
           <div style={cardHeader}>
             <div>
               <p style={cardMini}>Organização premium</p>
-              <h2 style={cardTitulo}>Cadastrar aula</h2>
+              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "30px" : "38px" }}>
+                Cadastrar aula
+              </h2>
             </div>
           </div>
 
-          <div
-            style={{
-              ...formGrid,
-              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-            }}
-          >
+          <div style={formGridResponsivo}>
             <div style={campo}>
               <label style={label}>Aluno</label>
               <select
@@ -945,24 +984,23 @@ export default function AgendaPage() {
             </button>
           </div>
         </div>
-        <div style={resumoMensalCard}>
+
+        <div
+          style={{
+            ...resumoMensalCard,
+            padding: isMobile ? "18px" : "30px",
+          }}
+        >
           <div style={cardHeader}>
             <div>
               <p style={cardMini}>Resumo mensal</p>
-              <h2 style={cardTitulo}>
+              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
                 Mês atual - {primeiraMaiuscula(nomeMesAtual)}
               </h2>
             </div>
           </div>
 
-          <div
-            style={{
-              ...faixaMensal,
-              gridTemplateColumns: isMobile
-                ? "1fr 1fr"
-                : "repeat(6, minmax(0, 1fr))",
-            }}
-          >
+          <div style={faixaMensalResponsiva}>
             <div style={analiticaCard}>
               <span style={analiticaRotulo}>Aulas no mês</span>
               <strong style={analiticaValorAzul}>{aulasMes}</strong>
@@ -996,35 +1034,34 @@ export default function AgendaPage() {
             </div>
           </div>
         </div>
-
-        <div style={quadroSemanalCard}>
+        <div
+          style={{
+            ...quadroSemanalCard,
+            padding: isMobile ? "18px" : "30px",
+          }}
+        >
           <div style={cardHeaderPlanilha}>
             <div>
               <p style={cardMini}>Visão semanal avançada</p>
-              <h2 style={cardTitulo}>Planilha por horário</h2>
+              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
+                Planilha por horário
+              </h2>
             </div>
 
             <div style={acoesSemana}>
               <button onClick={irSemanaAnterior} style={botaoSemanaSecundario}>
                 Semana anterior
               </button>
-
               <button onClick={irSemanaAtual} style={botaoSemanaAtual}>
                 Semana atual
               </button>
-
               <button onClick={irProximaSemana} style={botaoSemanaSecundario}>
                 Próxima semana
               </button>
             </div>
           </div>
 
-          <div
-            style={{
-              ...barraPeriodo,
-              gridTemplateColumns: isMobile ? "1fr" : "1fr auto",
-            }}
-          >
+          <div style={barraPeriodoResponsiva}>
             <div style={periodoBox}>
               <span style={periodoLabel}>Período exibido</span>
               <strong style={periodoValor}>
@@ -1039,14 +1076,7 @@ export default function AgendaPage() {
             </div>
           </div>
 
-          <div
-            style={{
-              ...faixaAnalitica,
-              gridTemplateColumns: isMobile
-                ? "1fr 1fr"
-                : "repeat(3, minmax(0, 1fr))",
-            }}
-          >
+          <div style={faixaAnaliticaResponsiva}>
             <div style={analiticaCard}>
               <span style={analiticaRotulo}>Conflitos</span>
               <strong style={analiticaValorVermelho}>{conflitoTotal}</strong>
@@ -1090,7 +1120,7 @@ export default function AgendaPage() {
           </div>
 
           {isMobile ? (
-            <div style={carrosselDias}>
+            <div style={mobileContainer}>
               {diasSemana.map((dia) => {
                 const aulasDoDia = mapaSemanal[dia.chave] || [];
 
@@ -1126,6 +1156,7 @@ export default function AgendaPage() {
                             >
                               <div style={blocoAulaTopo}>
                                 <span style={blocoHora}>{aula.hora || "--:--"}</span>
+
                                 <span
                                   style={{
                                     ...reposicaoBadge,
@@ -1142,7 +1173,9 @@ export default function AgendaPage() {
                                 {aula.alunoNome || "Aluno"}
                               </div>
 
-                              <div style={blocoData}>{formatarData(aula.data)}</div>
+                              <div style={blocoData}>
+                                {formatarData(aula.data)}
+                              </div>
 
                               <div
                                 style={{
@@ -1167,7 +1200,9 @@ export default function AgendaPage() {
                                 </button>
 
                                 <button
-                                  onClick={() => atualizarStatusAula(aula.id, "faltou")}
+                                  onClick={() =>
+                                    atualizarStatusAula(aula.id, "faltou")
+                                  }
                                   style={botaoFalta}
                                   title="Marcar falta"
                                 >
@@ -1269,6 +1304,7 @@ export default function AgendaPage() {
                                 >
                                   <div style={blocoAulaTopo}>
                                     <span style={blocoHora}>{aula.hora || horario}</span>
+
                                     <span
                                       style={{
                                         ...reposicaoBadge,
@@ -1277,7 +1313,9 @@ export default function AgendaPage() {
                                           : reposicaoNao),
                                       }}
                                     >
-                                      {aula.reposicao === "sim" ? "Reposição" : "Normal"}
+                                      {aula.reposicao === "sim"
+                                        ? "Reposição"
+                                        : "Normal"}
                                     </span>
                                   </div>
 
@@ -1364,21 +1402,25 @@ export default function AgendaPage() {
             </div>
           )}
         </div>
+
         {editandoId && (
-          <div ref={editorRef} style={editorCard}>
+          <div
+            ref={editorRef}
+            style={{
+              ...editorCard,
+              padding: isMobile ? "18px" : "30px",
+            }}
+          >
             <div style={cardHeader}>
               <div>
                 <p style={cardMini}>Atualização da agenda</p>
-                <h2 style={cardTitulo}>Editar aula</h2>
+                <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
+                  Editar aula
+                </h2>
               </div>
             </div>
 
-            <div
-              style={{
-                ...formGrid,
-                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-              }}
-            >
+            <div style={formGridResponsivo}>
               <div style={campo}>
                 <label style={label}>Aluno</label>
                 <select
@@ -1442,12 +1484,7 @@ export default function AgendaPage() {
               </div>
             </div>
 
-            <div
-              style={{
-                ...acoesEdicao,
-                flexDirection: isMobile ? ("column" as const) : ("row" as const),
-              }}
-            >
+            <div style={acoesEdicaoResponsiva}>
               <button onClick={cancelarEdicao} style={botaoCancelar}>
                 Cancelar
               </button>
@@ -1463,11 +1500,18 @@ export default function AgendaPage() {
           </div>
         )}
 
-        <div style={resumoPorAlunoCard}>
+        <div
+          style={{
+            ...resumoPorAlunoCard,
+            padding: isMobile ? "18px" : "30px",
+          }}
+        >
           <div style={cardHeader}>
             <div>
               <p style={cardMini}>Performance mensal</p>
-              <h2 style={cardTitulo}>Resumo por aluno no mês</h2>
+              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
+                Resumo por aluno no mês
+              </h2>
             </div>
           </div>
 
@@ -1501,14 +1545,7 @@ export default function AgendaPage() {
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        ...resumoAlunoGrid,
-                        gridTemplateColumns: isMobile
-                          ? "1fr 1fr"
-                          : "repeat(4, minmax(0, 1fr))",
-                      }}
-                    >
+                    <div style={resumoAlunoGridResponsivo}>
                       <div style={resumoAlunoInfoBox}>
                         <p style={resumoAlunoInfoLabel}>Presenças</p>
                         <p style={resumoAlunoInfoValorVerde}>{item.presencas}</p>
@@ -1538,11 +1575,18 @@ export default function AgendaPage() {
           )}
         </div>
 
-        <div style={listaCard}>
+        <div
+          style={{
+            ...listaCard,
+            padding: isMobile ? "18px" : "30px",
+          }}
+        >
           <div style={cardHeader}>
             <div>
               <p style={cardMini}>Agenda registrada</p>
-              <h2 style={cardTitulo}>Aulas cadastradas</h2>
+              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
+                Aulas cadastradas
+              </h2>
             </div>
           </div>
 
@@ -1568,14 +1612,12 @@ export default function AgendaPage() {
                   <div
                     key={aula.id}
                     style={{
-                      ...itemAula,
+                      ...itemAulaResponsivo,
                       border: `1px solid ${cor.borda}`,
                       boxShadow: cor.glow,
-                      flexDirection: isMobile ? ("column" as const) : ("row" as const),
-                      alignItems: isMobile ? ("flex-start" as const) : ("center" as const),
                     }}
                   >
-                    <div style={{ width: "100%" }}>
+                    <div>
                       <h3 style={{ ...itemNome, color: cor.texto }}>
                         {aula.alunoNome || "Aluno"}
                       </h3>
@@ -1596,15 +1638,7 @@ export default function AgendaPage() {
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        ...itemAulaDireita,
-                        width: isMobile ? "100%" : "auto",
-                        justifyContent: isMobile
-                          ? ("flex-start" as const)
-                          : ("flex-end" as const),
-                      }}
-                    >
+                    <div style={itemAulaDireitaResponsivo}>
                       <div
                         style={{
                           ...badgeReposicao,
@@ -1614,13 +1648,7 @@ export default function AgendaPage() {
                         Reposição: {aula.reposicao === "sim" ? "Sim" : "Não"}
                       </div>
 
-                      <div
-                        style={{
-                          ...itemListaAcoes,
-                          flexWrap: "wrap" as const,
-                          width: isMobile ? "100%" : "auto",
-                        }}
-                      >
+                      <div style={itemListaAcoesResponsivo}>
                         <button
                           onClick={() => atualizarStatusAula(aula.id, "presente")}
                           style={botaoPresente}
@@ -1919,7 +1947,6 @@ const formCard = {
     "linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "30px",
-  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
 };
 
@@ -1928,7 +1955,6 @@ const quadroSemanalCard = {
     "linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "30px",
-  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
 };
 
@@ -1937,7 +1963,6 @@ const editorCard = {
     "linear-gradient(135deg, rgba(34,197,94,0.08), rgba(255,255,255,0.035))",
   border: "1px solid rgba(34,197,94,0.18)",
   borderRadius: "30px",
-  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
 };
 
@@ -1946,7 +1971,6 @@ const listaCard = {
     "linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "30px",
-  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
 };
 
@@ -1955,7 +1979,6 @@ const resumoMensalCard = {
     "linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "30px",
-  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
 };
 
@@ -1964,7 +1987,6 @@ const resumoPorAlunoCard = {
     "linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "30px",
-  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
 };
 
@@ -2013,7 +2035,6 @@ const formGrid = {
   position: "relative" as const,
   zIndex: 1,
   display: "grid",
-  gridTemplateColumns: "1fr 1fr",
   gap: "18px",
 };
 
@@ -2104,7 +2125,6 @@ const botaoSemanaAtual = {
 
 const barraPeriodo = {
   display: "grid",
-  gridTemplateColumns: "1fr auto",
   gap: "16px",
   alignItems: "center",
   marginBottom: "18px",
@@ -2150,14 +2170,12 @@ const periodoResumoValor = {
 
 const faixaAnalitica = {
   display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   gap: "14px",
   marginBottom: "18px",
 };
 
 const faixaMensal = {
   display: "grid",
-  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
   gap: "14px",
 };
 
@@ -2216,23 +2234,17 @@ const quadroSemanalInfoTexto = {
   lineHeight: 1.7,
 };
 
-const carrosselDias = {
+const mobileContainer = {
   display: "flex",
-  gap: "14px",
-  overflowX: "auto" as const,
-  scrollSnapType: "x mandatory" as const,
-  WebkitOverflowScrolling: "touch" as const,
-  paddingBottom: "6px",
+  flexDirection: "column" as const,
+  gap: "16px",
 };
 
 const cardDiaMobile = {
-  minWidth: "100%",
-  scrollSnapAlign: "start" as const,
-  borderRadius: "22px",
+  borderRadius: "20px",
   background: "rgba(255,255,255,0.04)",
   border: "1px solid rgba(255,255,255,0.08)",
-  padding: "16px",
-  boxSizing: "border-box" as const,
+  padding: "14px",
 };
 
 const cardDiaTopoMobile = {
@@ -2586,7 +2598,6 @@ const lista = {
 const itemAula = {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "center",
   gap: "14px",
   padding: "18px",
   borderRadius: "20px",
@@ -2610,7 +2621,6 @@ const itemAulaDireita = {
   alignItems: "center",
   gap: "12px",
   flexWrap: "wrap" as const,
-  justifyContent: "flex-end" as const,
 };
 
 const itemListaAcoes = {
@@ -2677,7 +2687,6 @@ const resumoAlunoBadge = {
 
 const resumoAlunoGrid = {
   display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
   gap: "12px",
 };
 
