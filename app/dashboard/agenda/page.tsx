@@ -129,6 +129,12 @@ export default function AgendaPage() {
   const [hora, setHora] = useState("");
   const [reposicao, setReposicao] = useState("nao");
 
+  const [modoCadastro, setModoCadastro] = useState<"manual" | "automatico">(
+    "manual"
+  );
+  const [diasSelecionados, setDiasSelecionados] = useState<string[]>([]);
+  const [quantidadeSemanas, setQuantidadeSemanas] = useState(4);
+
   const [salvando, setSalvando] = useState(false);
   const [carregando, setCarregando] = useState(true);
 
@@ -232,28 +238,39 @@ export default function AgendaPage() {
 
       const aulasDoMesAtual = aulasLista.filter((aula) => {
         if (!aula.data) return false;
+
         const [ano, mes] = aula.data.split("-").map(Number);
         return mes === mesAtual && ano === anoAtual;
       });
+
+      const totalMesAtual = aulasDoMesAtual.length;
+
+      const totalPresencasMes = aulasDoMesAtual.filter(
+        (aula) => aula.status === "presente"
+      ).length;
+
+      const totalFaltasMes = aulasDoMesAtual.filter(
+        (aula) => aula.status === "faltou"
+      ).length;
+
+      const totalCanceladasMes = aulasDoMesAtual.filter(
+        (aula) => aula.status === "cancelado"
+      ).length;
+
+      const totalReposicoesMes = aulasDoMesAtual.filter(
+        (aula) => aula.reposicao === "sim"
+      ).length;
 
       setAlunos(alunosLista);
       setAulas(aulasLista);
       setAulasHoje(totalHoje);
       setAulasSemana(totalSemanaAtual);
 
-      setAulasMes(aulasDoMesAtual.length);
-      setPresencasMes(
-        aulasDoMesAtual.filter((aula) => aula.status === "presente").length
-      );
-      setFaltasMes(
-        aulasDoMesAtual.filter((aula) => aula.status === "faltou").length
-      );
-      setCanceladasMes(
-        aulasDoMesAtual.filter((aula) => aula.status === "cancelado").length
-      );
-      setReposicoesMes(
-        aulasDoMesAtual.filter((aula) => aula.reposicao === "sim").length
-      );
+      setAulasMes(totalMesAtual);
+      setPresencasMes(totalPresencasMes);
+      setFaltasMes(totalFaltasMes);
+      setCanceladasMes(totalCanceladasMes);
+      setReposicoesMes(totalReposicoesMes);
     } catch (error) {
       console.error("Erro ao carregar agenda:", error);
       alert("Erro ao carregar agenda");
@@ -325,6 +342,77 @@ export default function AgendaPage() {
     }
   }
 
+  async function cadastrarAulasAutomaticas() {
+    if (!alunoNome) {
+      alert("Selecione um aluno");
+      return;
+    }
+
+    if (!hora) {
+      alert("Informe a hora");
+      return;
+    }
+
+    if (diasSelecionados.length === 0) {
+      alert("Selecione pelo menos um dia da semana");
+      return;
+    }
+
+    try {
+      setSalvando(true);
+
+      const user = auth.currentUser;
+
+      if (!user) {
+        alert("Usuário não autenticado");
+        return;
+      }
+
+      const hoje = new Date();
+
+      for (let semana = 0; semana < quantidadeSemanas; semana += 1) {
+        for (const dia of diasSelecionados) {
+          const dataBase = new Date(hoje);
+          dataBase.setHours(12, 0, 0, 0);
+          dataBase.setDate(hoje.getDate() + semana * 7);
+
+          while (getChaveDiaSemana(dataBase.toISOString().split("T")[0]) !== dia) {
+            dataBase.setDate(dataBase.getDate() + 1);
+          }
+
+          const dataISO = dataBase.toISOString().split("T")[0];
+
+          await addDoc(collection(db, "agenda"), {
+            alunoNome,
+            data: dataISO,
+            hora,
+            reposicao,
+            status: "pendente",
+            userId: user.uid,
+            criadoEm: serverTimestamp(),
+          });
+        }
+      }
+
+      alert("Aulas recorrentes cadastradas com sucesso");
+
+      setAlunoNome("");
+      setData("");
+      setHora("");
+      setReposicao("nao");
+      setDiasSelecionados([]);
+      setQuantidadeSemanas(4);
+      setModoCadastro("manual");
+
+      await carregarDados();
+    } catch (error) {
+      console.error("Erro ao cadastrar aulas recorrentes:", error);
+      alert("Erro ao cadastrar aulas recorrentes");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
   function abrirEdicao(aula: Aula) {
     setEditandoId(aula.id);
     setEditAlunoNome(aula.alunoNome || "");
@@ -389,7 +477,6 @@ export default function AgendaPage() {
       setSalvandoEdicao(false);
     }
   }
-
   async function atualizarStatusAula(id: string, novoStatus: AulaStatus) {
     try {
       await updateDoc(doc(db, "agenda", id), {
@@ -437,6 +524,15 @@ export default function AgendaPage() {
     setFiltroAluno("");
     setFiltroStatus("todos");
   }
+
+  function toggleDiaSelecionado(chave: string) {
+    setDiasSelecionados((valorAtual) =>
+      valorAtual.includes(chave)
+        ? valorAtual.filter((item) => item !== chave)
+        : [...valorAtual, chave]
+    );
+  }
+
   const fimSemanaSelecionada = useMemo(
     () => getFimDaSemanaPorInicio(inicioSemanaSelecionada),
     [inicioSemanaSelecionada]
@@ -492,7 +588,9 @@ export default function AgendaPage() {
     });
 
     Object.keys(estrutura).forEach((chave) => {
-      estrutura[chave].sort((a, b) => (a.hora || "").localeCompare(b.hora || ""));
+      estrutura[chave].sort((a, b) =>
+        (a.hora || "").localeCompare(b.hora || "")
+      );
     });
 
     return estrutura;
@@ -635,7 +733,9 @@ export default function AgendaPage() {
 
   const hero = {
     display: "grid",
-    gridTemplateColumns: "1fr",
+    gridTemplateColumns: isMobile
+      ? "1fr"
+      : "repeat(auto-fit, minmax(300px, 1fr))",
     gap: isMobile ? "12px" : "20px",
     width: "100%",
   };
@@ -674,82 +774,23 @@ export default function AgendaPage() {
     boxSizing: "border-box" as const,
   };
 
-  const formGridResponsivo = {
-    ...formGrid,
-    gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-  };
-
-  const faixaMensalResponsiva = {
-    ...faixaMensal,
-    gridTemplateColumns: isMobile ? "1fr" : "repeat(6, minmax(0, 1fr))",
-  };
-
-  const faixaAnaliticaResponsiva = {
-    ...faixaAnalitica,
-    gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
-  };
-
-  const barraPeriodoResponsiva = {
-    ...barraPeriodo,
-    gridTemplateColumns: isMobile ? "1fr" : "1fr auto",
-  };
-
-  const acoesEdicaoResponsiva = {
-    ...acoesEdicao,
-    flexDirection: isMobile ? ("column" as const) : ("row" as const),
-  };
-
-  const itemAulaResponsivo = {
-    ...itemAula,
-    flexDirection: isMobile ? ("column" as const) : ("row" as const),
-    alignItems: isMobile ? ("flex-start" as const) : ("center" as const),
-  };
-
-  const itemAulaDireitaResponsivo = {
-    ...itemAulaDireita,
-    width: isMobile ? "100%" : "auto",
-    justifyContent: isMobile ? ("flex-start" as const) : ("flex-end" as const),
-  };
-
-  const itemListaAcoesResponsivo = {
-    ...itemListaAcoes,
-    flexWrap: "wrap" as const,
-  };
-
-  const resumoAlunoGridResponsivo = {
-    ...resumoAlunoGrid,
-    gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, minmax(0, 1fr))",
-  };
   return (
     <div style={pagina}>
       <section style={hero}>
         <div style={heroPrincipal}>
           <p style={eyebrow}>Agenda e controle de aulas</p>
-          <h1
-            style={{
-              ...titulo,
-              fontSize: isMobile ? "38px" : "52px",
-              lineHeight: isMobile ? 1.08 : 1,
-            }}
-          >
-            Agenda
-          </h1>
-          <p
-            style={{
-              ...descricao,
-              fontSize: isMobile ? "15px" : "17px",
-              lineHeight: isMobile ? 1.65 : 1.8,
-            }}
-          >
+          <h1 style={titulo}>Agenda</h1>
+          <p style={descricao}>
             Organize seus atendimentos, registre horários, acompanhe reposições,
-            presença, faltas e visualize a semana em formato profissional por dia.
+            presença, faltas e visualize a semana em formato de planilha
+            profissional por dia e por horário.
           </p>
         </div>
 
         <div style={heroResumoGrid}>
           <div style={heroResumo}>
             <p style={heroResumoRotulo}>Aulas do dia</p>
-            <h2 style={{ ...heroResumoValorAzul, fontSize: isMobile ? "34px" : "42px" }}>
+            <h2 style={heroResumoValorAzul}>
               {filtroAluno || filtroStatus !== "todos"
                 ? aulasFiltradasBase.filter(
                     (aula) => aula.data === new Date().toISOString().split("T")[0]
@@ -761,27 +802,27 @@ export default function AgendaPage() {
 
           <div style={heroResumo}>
             <p style={heroResumoRotulo}>Aulas da semana atual</p>
-            <h2 style={{ ...heroResumoValorVerde, fontSize: isMobile ? "34px" : "42px" }}>
+            <h2 style={heroResumoValorVerde}>
               {filtroAluno || filtroStatus !== "todos"
                 ? aulasDaSemanaSelecionada.length
                 : aulasSemana}
             </h2>
-            <p style={heroResumoTexto}>Visão consolidada da semana em andamento.</p>
+            <p style={heroResumoTexto}>
+              Visão consolidada da semana em andamento.
+            </p>
           </div>
 
           <div style={heroResumo}>
             <p style={heroResumoRotulo}>Aulas no mês</p>
-            <h2 style={{ ...heroResumoValorAzul, fontSize: isMobile ? "34px" : "42px" }}>
-              {aulasMes}
-            </h2>
-            <p style={heroResumoTexto}>Total de aulas registradas no mês atual.</p>
+            <h2 style={heroResumoValorAzul}>{aulasMes}</h2>
+            <p style={heroResumoTexto}>
+              Total de aulas registradas no mês atual.
+            </p>
           </div>
 
           <div style={heroResumo}>
             <p style={heroResumoRotulo}>Presença no mês</p>
-            <h2 style={{ ...heroResumoValorVerde, fontSize: isMobile ? "34px" : "42px" }}>
-              {percentualPresencaMes}%
-            </h2>
+            <h2 style={heroResumoValorVerde}>{percentualPresencaMes}%</h2>
             <p style={heroResumoTexto}>
               Presenças: {presencasMes} • Faltas: {faltasMes} • Canceladas:{" "}
               {canceladasMes}
@@ -795,9 +836,7 @@ export default function AgendaPage() {
           <div style={buscaHeader}>
             <div>
               <p style={cardMini}>Busca e filtros</p>
-              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
-                Filtrar agenda
-              </h2>
+              <h2 style={cardTitulo}>Filtrar agenda</h2>
             </div>
 
             {filtroAluno || filtroStatus !== "todos" ? (
@@ -813,10 +852,7 @@ export default function AgendaPage() {
               placeholder="Buscar por nome do aluno"
               value={buscaAluno}
               onChange={(e) => setBuscaAluno(e.target.value)}
-              style={{
-                ...inputBusca,
-                minWidth: isMobile ? "100%" : "240px",
-              }}
+              style={inputBusca}
             />
 
             <button onClick={aplicarFiltroAluno} style={botaoAplicarBusca}>
@@ -907,24 +943,88 @@ export default function AgendaPage() {
           </p>
         </div>
 
-        <div
-          style={{
-            ...formCard,
-            padding: isMobile ? "18px" : "30px",
-          }}
-        >
+        <div style={formCard}>
           <div style={cardGlow}></div>
 
           <div style={cardHeader}>
             <div>
               <p style={cardMini}>Organização premium</p>
-              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "30px" : "38px" }}>
-                Cadastrar aula
-              </h2>
+              <h2 style={cardTitulo}>Cadastrar aula</h2>
             </div>
           </div>
 
-          <div style={formGridResponsivo}>
+          <div style={modoCadastroWrap}>
+            <button
+              type="button"
+              onClick={() => setModoCadastro("manual")}
+              style={{
+                ...modoCadastroBotao,
+                ...(modoCadastro === "manual" ? modoCadastroBotaoAtivo : {}),
+              }}
+            >
+              Aula única
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setModoCadastro("automatico")}
+              style={{
+                ...modoCadastroBotao,
+                ...(modoCadastro === "automatico"
+                  ? modoCadastroBotaoAtivo
+                  : {}),
+              }}
+            >
+              Recorrência mensal
+            </button>
+          </div>
+
+          {modoCadastro === "automatico" && (
+            <div style={recorrenciaCard}>
+              <div style={recorrenciaTopo}>
+                <div>
+                  <p style={recorrenciaMini}>Configuração automática</p>
+                  <h3 style={recorrenciaTitulo}>Dias fixos da semana</h3>
+                </div>
+
+                <div style={quantidadeSemanasBox}>
+                  <span style={quantidadeSemanasLabel}>Semanas</span>
+                  <select
+                    value={quantidadeSemanas}
+                    onChange={(e) => setQuantidadeSemanas(Number(e.target.value))}
+                    style={selectSemanas}
+                  >
+                    <option value={4}>4 semanas</option>
+                    <option value={5}>5 semanas</option>
+                    <option value={6}>6 semanas</option>
+                    <option value={8}>8 semanas</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={diasSemanaCheckboxGrid}>
+                {diasSemana.map((dia) => {
+                  const ativo = diasSelecionados.includes(dia.chave);
+
+                  return (
+                    <button
+                      key={dia.chave}
+                      type="button"
+                      onClick={() => toggleDiaSelecionado(dia.chave)}
+                      style={{
+                        ...diaSemanaChip,
+                        ...(ativo ? diaSemanaChipAtivo : {}),
+                      }}
+                    >
+                      {dia.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div style={formGrid}>
             <div style={campo}>
               <label style={label}>Aluno</label>
               <select
@@ -948,6 +1048,7 @@ export default function AgendaPage() {
                 value={data}
                 onChange={(e) => setData(e.target.value)}
                 style={input}
+                disabled={modoCadastro === "automatico"}
               />
             </div>
 
@@ -976,31 +1077,33 @@ export default function AgendaPage() {
 
           <div style={acoes}>
             <button
-              onClick={cadastrarAula}
+              onClick={
+                modoCadastro === "manual"
+                  ? cadastrarAula
+                  : cadastrarAulasAutomaticas
+              }
               disabled={salvando}
               style={botaoPrincipal}
             >
-              {salvando ? "Salvando aula..." : "Cadastrar aula"}
+              {salvando
+                ? "Salvando..."
+                : modoCadastro === "manual"
+                ? "Cadastrar aula"
+                : "Cadastrar aulas automáticas"}
             </button>
           </div>
         </div>
-
-        <div
-          style={{
-            ...resumoMensalCard,
-            padding: isMobile ? "18px" : "30px",
-          }}
-        >
+        <div style={resumoMensalCard}>
           <div style={cardHeader}>
             <div>
               <p style={cardMini}>Resumo mensal</p>
-              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
+              <h2 style={cardTitulo}>
                 Mês atual - {primeiraMaiuscula(nomeMesAtual)}
               </h2>
             </div>
           </div>
 
-          <div style={faixaMensalResponsiva}>
+          <div style={faixaMensal}>
             <div style={analiticaCard}>
               <span style={analiticaRotulo}>Aulas no mês</span>
               <strong style={analiticaValorAzul}>{aulasMes}</strong>
@@ -1034,34 +1137,30 @@ export default function AgendaPage() {
             </div>
           </div>
         </div>
-        <div
-          style={{
-            ...quadroSemanalCard,
-            padding: isMobile ? "18px" : "30px",
-          }}
-        >
+
+        <div style={quadroSemanalCard}>
           <div style={cardHeaderPlanilha}>
             <div>
               <p style={cardMini}>Visão semanal avançada</p>
-              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
-                Planilha por horário
-              </h2>
+              <h2 style={cardTitulo}>Planilha por horário</h2>
             </div>
 
             <div style={acoesSemana}>
               <button onClick={irSemanaAnterior} style={botaoSemanaSecundario}>
                 Semana anterior
               </button>
+
               <button onClick={irSemanaAtual} style={botaoSemanaAtual}>
                 Semana atual
               </button>
+
               <button onClick={irProximaSemana} style={botaoSemanaSecundario}>
                 Próxima semana
               </button>
             </div>
           </div>
 
-          <div style={barraPeriodoResponsiva}>
+          <div style={barraPeriodo}>
             <div style={periodoBox}>
               <span style={periodoLabel}>Período exibido</span>
               <strong style={periodoValor}>
@@ -1076,7 +1175,7 @@ export default function AgendaPage() {
             </div>
           </div>
 
-          <div style={faixaAnaliticaResponsiva}>
+          <div style={faixaAnalitica}>
             <div style={analiticaCard}>
               <span style={analiticaRotulo}>Conflitos</span>
               <strong style={analiticaValorVermelho}>{conflitoTotal}</strong>
@@ -1173,9 +1272,7 @@ export default function AgendaPage() {
                                 {aula.alunoNome || "Aluno"}
                               </div>
 
-                              <div style={blocoData}>
-                                {formatarData(aula.data)}
-                              </div>
+                              <div style={blocoData}>{formatarData(aula.data)}</div>
 
                               <div
                                 style={{
@@ -1190,9 +1287,7 @@ export default function AgendaPage() {
 
                               <div style={blocoAcoesStatus}>
                                 <button
-                                  onClick={() =>
-                                    atualizarStatusAula(aula.id, "presente")
-                                  }
+                                  onClick={() => atualizarStatusAula(aula.id, "presente")}
                                   style={botaoPresente}
                                   title="Marcar presença"
                                 >
@@ -1200,9 +1295,7 @@ export default function AgendaPage() {
                                 </button>
 
                                 <button
-                                  onClick={() =>
-                                    atualizarStatusAula(aula.id, "faltou")
-                                  }
+                                  onClick={() => atualizarStatusAula(aula.id, "faltou")}
                                   style={botaoFalta}
                                   title="Marcar falta"
                                 >
@@ -1402,25 +1495,16 @@ export default function AgendaPage() {
             </div>
           )}
         </div>
-
         {editandoId && (
-          <div
-            ref={editorRef}
-            style={{
-              ...editorCard,
-              padding: isMobile ? "18px" : "30px",
-            }}
-          >
+          <div ref={editorRef} style={editorCard}>
             <div style={cardHeader}>
               <div>
                 <p style={cardMini}>Atualização da agenda</p>
-                <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
-                  Editar aula
-                </h2>
+                <h2 style={cardTitulo}>Editar aula</h2>
               </div>
             </div>
 
-            <div style={formGridResponsivo}>
+            <div style={formGrid}>
               <div style={campo}>
                 <label style={label}>Aluno</label>
                 <select
@@ -1484,7 +1568,7 @@ export default function AgendaPage() {
               </div>
             </div>
 
-            <div style={acoesEdicaoResponsiva}>
+            <div style={acoesEdicao}>
               <button onClick={cancelarEdicao} style={botaoCancelar}>
                 Cancelar
               </button>
@@ -1500,18 +1584,11 @@ export default function AgendaPage() {
           </div>
         )}
 
-        <div
-          style={{
-            ...resumoPorAlunoCard,
-            padding: isMobile ? "18px" : "30px",
-          }}
-        >
+        <div style={resumoPorAlunoCard}>
           <div style={cardHeader}>
             <div>
               <p style={cardMini}>Performance mensal</p>
-              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
-                Resumo por aluno no mês
-              </h2>
+              <h2 style={cardTitulo}>Resumo por aluno no mês</h2>
             </div>
           </div>
 
@@ -1545,7 +1622,7 @@ export default function AgendaPage() {
                       </div>
                     </div>
 
-                    <div style={resumoAlunoGridResponsivo}>
+                    <div style={resumoAlunoGrid}>
                       <div style={resumoAlunoInfoBox}>
                         <p style={resumoAlunoInfoLabel}>Presenças</p>
                         <p style={resumoAlunoInfoValorVerde}>{item.presencas}</p>
@@ -1575,18 +1652,11 @@ export default function AgendaPage() {
           )}
         </div>
 
-        <div
-          style={{
-            ...listaCard,
-            padding: isMobile ? "18px" : "30px",
-          }}
-        >
+        <div style={listaCard}>
           <div style={cardHeader}>
             <div>
               <p style={cardMini}>Agenda registrada</p>
-              <h2 style={{ ...cardTitulo, fontSize: isMobile ? "28px" : "38px" }}>
-                Aulas cadastradas
-              </h2>
+              <h2 style={cardTitulo}>Aulas cadastradas</h2>
             </div>
           </div>
 
@@ -1612,7 +1682,7 @@ export default function AgendaPage() {
                   <div
                     key={aula.id}
                     style={{
-                      ...itemAulaResponsivo,
+                      ...itemAula,
                       border: `1px solid ${cor.borda}`,
                       boxShadow: cor.glow,
                     }}
@@ -1638,7 +1708,7 @@ export default function AgendaPage() {
                       </div>
                     </div>
 
-                    <div style={itemAulaDireitaResponsivo}>
+                    <div style={itemAulaDireita}>
                       <div
                         style={{
                           ...badgeReposicao,
@@ -1648,7 +1718,7 @@ export default function AgendaPage() {
                         Reposição: {aula.reposicao === "sim" ? "Sim" : "Não"}
                       </div>
 
-                      <div style={itemListaAcoesResponsivo}>
+                      <div style={itemListaAcoes}>
                         <button
                           onClick={() => atualizarStatusAula(aula.id, "presente")}
                           style={botaoPresente}
@@ -1792,7 +1862,6 @@ function primeiraMaiuscula(texto: string) {
   if (!texto) return "";
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
-
 const eyebrow = {
   margin: 0,
   color: "rgba(255,255,255,0.6)",
@@ -1947,7 +2016,118 @@ const formCard = {
     "linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "30px",
+  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
+};
+
+const modoCadastroWrap = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap" as const,
+  marginBottom: "18px",
+  position: "relative" as const,
+  zIndex: 1,
+};
+
+const modoCadastroBotao = {
+  height: "42px",
+  padding: "0 16px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.05)",
+  color: "#ffffff",
+  fontSize: "13px",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const modoCadastroBotaoAtivo = {
+  background: "rgba(59,130,246,0.16)",
+  border: "1px solid rgba(59,130,246,0.22)",
+  color: "#93c5fd",
+};
+
+const recorrenciaCard = {
+  position: "relative" as const,
+  zIndex: 1,
+  marginBottom: "18px",
+  padding: "18px",
+  borderRadius: "22px",
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.08)",
+};
+
+const recorrenciaTopo = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: "14px",
+  flexWrap: "wrap" as const,
+  marginBottom: "16px",
+};
+
+const recorrenciaMini = {
+  margin: 0,
+  color: "rgba(255,255,255,0.56)",
+  fontSize: "12px",
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.7px",
+};
+
+const recorrenciaTitulo = {
+  margin: "8px 0 0 0",
+  color: "#ffffff",
+  fontSize: "20px",
+  fontWeight: 900,
+};
+
+const quantidadeSemanasBox = {
+  display: "flex",
+  flexDirection: "column" as const,
+  gap: "8px",
+  minWidth: "140px",
+};
+
+const quantidadeSemanasLabel = {
+  color: "rgba(255,255,255,0.70)",
+  fontSize: "13px",
+  fontWeight: 700,
+};
+
+const selectSemanas = {
+  width: "100%",
+  height: "44px",
+  padding: "0 12px",
+  borderRadius: "14px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(15,23,42,0.62)",
+  color: "#ffffff",
+  fontSize: "14px",
+  outline: "none",
+};
+
+const diasSemanaCheckboxGrid = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap" as const,
+};
+
+const diaSemanaChip = {
+  minHeight: "40px",
+  padding: "0 14px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.05)",
+  color: "#ffffff",
+  fontSize: "13px",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const diaSemanaChipAtivo = {
+  background: "rgba(34,197,94,0.14)",
+  border: "1px solid rgba(34,197,94,0.22)",
+  color: "#86efac",
 };
 
 const quadroSemanalCard = {
@@ -1955,6 +2135,7 @@ const quadroSemanalCard = {
     "linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "30px",
+  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
 };
 
@@ -1963,6 +2144,7 @@ const editorCard = {
     "linear-gradient(135deg, rgba(34,197,94,0.08), rgba(255,255,255,0.035))",
   border: "1px solid rgba(34,197,94,0.18)",
   borderRadius: "30px",
+  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
 };
 
@@ -1971,6 +2153,7 @@ const listaCard = {
     "linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "30px",
+  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
 };
 
@@ -1979,6 +2162,7 @@ const resumoMensalCard = {
     "linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "30px",
+  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
 };
 
@@ -1987,6 +2171,7 @@ const resumoPorAlunoCard = {
     "linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "30px",
+  padding: "30px",
   boxShadow: "0 20px 44px rgba(0,0,0,0.20)",
 };
 
@@ -2035,6 +2220,7 @@ const formGrid = {
   position: "relative" as const,
   zIndex: 1,
   display: "grid",
+  gridTemplateColumns: "1fr 1fr",
   gap: "18px",
 };
 
@@ -2125,6 +2311,7 @@ const botaoSemanaAtual = {
 
 const barraPeriodo = {
   display: "grid",
+  gridTemplateColumns: "1fr auto",
   gap: "16px",
   alignItems: "center",
   marginBottom: "18px",
@@ -2170,12 +2357,14 @@ const periodoResumoValor = {
 
 const faixaAnalitica = {
   display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   gap: "14px",
   marginBottom: "18px",
 };
 
 const faixaMensal = {
   display: "grid",
+  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
   gap: "14px",
 };
 
@@ -2237,7 +2426,7 @@ const quadroSemanalInfoTexto = {
 const mobileContainer = {
   display: "flex",
   flexDirection: "column" as const,
-  gap: "16px",
+  gap: "14px",
 };
 
 const cardDiaMobile = {
@@ -2309,60 +2498,60 @@ const gradeWrapper = {
 
 const gradeHeader = {
   display: "grid",
-  minWidth: "1400px",
-  gridTemplateColumns: "100px repeat(7, minmax(170px, 1fr))",
+  minWidth: "980px",
+  gridTemplateColumns: "60px repeat(7, minmax(120px, 1fr))",
   background: "rgba(255,255,255,0.04)",
   borderBottom: "1px solid rgba(255,255,255,0.08)",
 };
 
 const celulaHorarioHeader = {
-  minHeight: "72px",
+  minHeight: "58px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  padding: "12px",
-  fontSize: "14px",
+  padding: "8px",
+  fontSize: "12px",
   fontWeight: 900,
   color: "rgba(255,255,255,0.72)",
   borderRight: "1px solid rgba(255,255,255,0.08)",
 };
 
 const celulaDiaHeader = {
-  minHeight: "72px",
-  padding: "12px",
+  minHeight: "58px",
+  padding: "8px",
   display: "flex",
   flexDirection: "column" as const,
   justifyContent: "center",
-  gap: "6px",
+  gap: "4px",
   borderRight: "1px solid rgba(255,255,255,0.08)",
 };
 
 const diaHeaderTitulo = {
-  fontSize: "16px",
+  fontSize: "13px",
   fontWeight: 900,
   color: "#ffffff",
 };
 
 const diaHeaderSubtitulo = {
-  fontSize: "12px",
+  fontSize: "10px",
   color: "rgba(255,255,255,0.58)",
   fontWeight: 700,
 };
 
 const gradeLinha = {
   display: "grid",
-  minWidth: "1400px",
-  gridTemplateColumns: "100px repeat(7, minmax(170px, 1fr))",
+  minWidth: "980px",
+  gridTemplateColumns: "60px repeat(7, minmax(120px, 1fr))",
   borderBottom: "1px solid rgba(255,255,255,0.08)",
 };
 
 const celulaHorario = {
-  minHeight: "90px",
-  padding: "14px 10px",
+  minHeight: "72px",
+  padding: "8px 6px",
   display: "flex",
   alignItems: "flex-start",
   justifyContent: "center",
-  fontSize: "15px",
+  fontSize: "11px",
   fontWeight: 900,
   color: "#93c5fd",
   borderRight: "1px solid rgba(255,255,255,0.08)",
@@ -2370,12 +2559,12 @@ const celulaHorario = {
 };
 
 const celulaAgenda = {
-  minHeight: "90px",
-  padding: "10px",
+  minHeight: "72px",
+  padding: "6px",
   borderRight: "1px solid rgba(255,255,255,0.08)",
   display: "flex",
   flexDirection: "column" as const,
-  gap: "10px",
+  gap: "6px",
   position: "relative" as const,
 };
 
@@ -2385,7 +2574,7 @@ const celulaAgendaConflito = {
 
 const slotVazio = {
   flex: 1,
-  borderRadius: "14px",
+  borderRadius: "10px",
   border: "1px dashed rgba(255,255,255,0.07)",
   background: "rgba(255,255,255,0.015)",
   display: "flex",
@@ -2395,39 +2584,39 @@ const slotVazio = {
 
 const slotVazioTexto = {
   color: "rgba(255,255,255,0.34)",
-  fontSize: "12px",
+  fontSize: "10px",
   fontWeight: 700,
 };
 
 const blocoAula = {
-  borderRadius: "16px",
-  padding: "10px",
+  borderRadius: "12px",
+  padding: "6px",
   display: "flex",
   flexDirection: "column" as const,
-  gap: "8px",
+  gap: "4px",
 };
 
 const blocoAulaTopo = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  gap: "8px",
+  gap: "6px",
 };
 
 const blocoHora = {
-  padding: "6px 10px",
+  padding: "4px 8px",
   borderRadius: "999px",
   background: "rgba(96,165,250,0.14)",
   border: "1px solid rgba(96,165,250,0.18)",
   color: "#93c5fd",
-  fontSize: "12px",
+  fontSize: "10px",
   fontWeight: 800,
 };
 
 const reposicaoBadge = {
-  padding: "6px 10px",
+  padding: "4px 8px",
   borderRadius: "999px",
-  fontSize: "11px",
+  fontSize: "10px",
   fontWeight: 800,
   whiteSpace: "nowrap" as const,
 };
@@ -2445,102 +2634,102 @@ const reposicaoNao = {
 };
 
 const blocoAluno = {
-  fontSize: "15px",
+  fontSize: "11px",
   fontWeight: 900,
-  lineHeight: 1.35,
+  lineHeight: 1.25,
 };
 
 const blocoData = {
-  fontSize: "12px",
+  fontSize: "10px",
   color: "rgba(255,255,255,0.58)",
 };
 
 const statusAula = {
-  fontSize: "11px",
+  fontSize: "10px",
   fontWeight: 800,
-  padding: "5px 9px",
-  borderRadius: "10px",
+  padding: "4px 7px",
+  borderRadius: "9px",
   width: "fit-content",
 };
 
 const blocoAcoesStatus = {
   display: "flex",
-  gap: "8px",
+  gap: "6px",
 };
 
 const blocoAcoes = {
   display: "flex",
-  gap: "8px",
+  gap: "6px",
 };
 
 const alertaConflito = {
   marginTop: "2px",
-  padding: "8px 10px",
+  padding: "6px 8px",
   borderRadius: "10px",
   background: "rgba(239,68,68,0.12)",
   border: "1px solid rgba(239,68,68,0.18)",
   color: "#fca5a5",
-  fontSize: "11px",
+  fontSize: "10px",
   fontWeight: 900,
   textAlign: "center" as const,
 };
 
 const botaoPresente = {
   flex: 1,
-  height: "34px",
+  height: "30px",
   borderRadius: "10px",
   border: "1px solid rgba(34,197,94,0.25)",
   background: "rgba(34,197,94,0.15)",
   color: "#4ade80",
-  fontSize: "12px",
+  fontSize: "11px",
   fontWeight: 900,
   cursor: "pointer",
 };
 
 const botaoFalta = {
   flex: 1,
-  height: "34px",
+  height: "30px",
   borderRadius: "10px",
   border: "1px solid rgba(239,68,68,0.25)",
   background: "rgba(239,68,68,0.15)",
   color: "#f87171",
-  fontSize: "12px",
+  fontSize: "11px",
   fontWeight: 900,
   cursor: "pointer",
 };
 
 const botaoCancelado = {
   flex: 1,
-  height: "34px",
+  height: "30px",
   borderRadius: "10px",
   border: "1px solid rgba(250,204,21,0.25)",
   background: "rgba(250,204,21,0.15)",
   color: "#fde68a",
-  fontSize: "12px",
+  fontSize: "11px",
   fontWeight: 900,
   cursor: "pointer",
 };
 
 const botaoMiniEditar = {
   flex: 1,
-  height: "34px",
+  height: "30px",
   borderRadius: "10px",
   border: "1px solid rgba(255,255,255,0.10)",
   background: "rgba(255,255,255,0.05)",
   color: "#ffffff",
-  fontSize: "12px",
+  fontSize: "11px",
   fontWeight: 800,
   cursor: "pointer",
 };
 
 const botaoMiniExcluir = {
   flex: 1,
-  height: "34px",
+  height: "30px",
   borderRadius: "10px",
   border: "1px solid rgba(239,68,68,0.18)",
   background: "rgba(239,68,68,0.12)",
   color: "#fca5a5",
-  fontSize: "12px",
+  fontSize: "11px",
   fontWeight: 800,
   cursor: "pointer",
 };
@@ -2598,6 +2787,7 @@ const lista = {
 const itemAula = {
   display: "flex",
   justifyContent: "space-between",
+  alignItems: "center",
   gap: "14px",
   padding: "18px",
   borderRadius: "20px",
@@ -2621,11 +2811,13 @@ const itemAulaDireita = {
   alignItems: "center",
   gap: "12px",
   flexWrap: "wrap" as const,
+  justifyContent: "flex-end" as const,
 };
 
 const itemListaAcoes = {
   display: "flex",
   gap: "8px",
+  flexWrap: "wrap" as const,
 };
 
 const badgeReposicao = {
@@ -2687,6 +2879,7 @@ const resumoAlunoBadge = {
 
 const resumoAlunoGrid = {
   display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
   gap: "12px",
 };
 
