@@ -5,6 +5,7 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import auth from "../firebaseAuth";
 import Sidebar from "../components/Sidebar";
+import NotificacaoProvider from "../components/NotificacaoProvider";
 
 export default function DashboardLayout({
   children,
@@ -67,15 +68,16 @@ export default function DashboardLayout({
   if (!usuario) return null;
 
   return (
-    <div
-      style={{
-        ...layout,
-        flexDirection: isTablet ? "column" : "row",
-      }}
-    >
-      <Sidebar />
+    <NotificacaoProvider>
+      <div
+        style={{
+          ...layout,
+          flexDirection: isTablet ? "column" : "row",
+        }}
+      >
+        <Sidebar />
 
-      <main
+        <main
         style={{
           ...conteudo,
           overflowY: "auto",
@@ -129,8 +131,9 @@ export default function DashboardLayout({
         </div>
 
         <div style={fadeRodape}></div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </NotificacaoProvider>
   );
 }
 

@@ -6,6 +6,7 @@ import { signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import auth from "../firebaseAuth";
 import db from "../firebaseDb";
+import { useNotificacoes } from "./NotificacaoProvider";
 
 type MenuItem = {
   label: string;
@@ -223,6 +224,7 @@ const menuItems: MenuItem[] = [
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
+  const { notificacoesNaoLidas } = useNotificacoes();
 
   const [rotaPressionada, setRotaPressionada] = useState("");
   const [tipoUsuario, setTipoUsuario] = useState<string>("personal");
@@ -758,10 +760,16 @@ export default function Sidebar() {
                     ...mobileDockButtonBase,
                     ...(ativo ? mobileDockButtonAtivo : {}),
                     ...(pressionado ? { opacity: 0.9 } : {}),
+                    position: "relative",
                   }}
                 >
                   <span style={mobileDockIconWrap}>{item.icon}</span>
                   <span style={mobileDockText}>{item.label}</span>
+                  {item.label === "Avisos" && notificacoesNaoLidas > 0 && (
+                    <span style={badgeNotificacaoMobile}>
+                      {notificacoesNaoLidas > 9 ? "9+" : notificacoesNaoLidas}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -866,10 +874,17 @@ export default function Sidebar() {
                     minWidth: 0,
                     whiteSpace: "normal",
                     wordBreak: "break-word",
+                    flex: 1,
                   }}
                 >
                   {item.label}
                 </span>
+
+                {item.label === "Avisos" && notificacoesNaoLidas > 0 && (
+                  <span style={badgeNotificacao}>
+                    {notificacoesNaoLidas > 9 ? "9+" : notificacoesNaoLidas}
+                  </span>
+                )}
 
                 <span
                   style={{
@@ -1222,4 +1237,38 @@ const botaoSairIcone = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+};
+
+const badgeNotificacao: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minWidth: "20px",
+  height: "20px",
+  padding: "0 6px",
+  borderRadius: "999px",
+  background: "linear-gradient(135deg, #ef4444, #dc2626)",
+  color: "#ffffff",
+  fontSize: "11px",
+  fontWeight: 800,
+  boxShadow: "0 4px 12px rgba(239,68,68,0.35)",
+  animation: "pulse 2s infinite",
+};
+
+const badgeNotificacaoMobile: React.CSSProperties = {
+  position: "absolute",
+  top: "4px",
+  right: "4px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minWidth: "16px",
+  height: "16px",
+  padding: "0 4px",
+  borderRadius: "999px",
+  background: "linear-gradient(135deg, #ef4444, #dc2626)",
+  color: "#ffffff",
+  fontSize: "9px",
+  fontWeight: 800,
+  boxShadow: "0 2px 8px rgba(239,68,68,0.4)"
 };
