@@ -21,6 +21,7 @@ type AlunoOption = {
 };
 
 export default function AlunosPage() {
+  const [isMobile, setIsMobile] = useState(false);
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [tipoPlano, setTipoPlano] = useState("mensal");
@@ -35,6 +36,16 @@ export default function AlunosPage() {
 
   const [salvando, setSalvando] = useState(false);
   const [totalAlunos, setTotalAlunos] = useState(0);
+
+  useEffect(() => {
+    function handleResize() {
+      if (typeof window === "undefined") return;
+      setIsMobile(window.innerWidth <= 900);
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   async function carregarResumo() {
     try {
@@ -138,66 +149,127 @@ export default function AlunosPage() {
 
   return (
     <div style={pagina}>
-      <section style={hero}>
-        <div style={heroPrincipal}>
+      <section style={{
+        ...hero,
+        display: isMobile ? "flex" : "grid",
+        flexDirection: isMobile ? "column" : undefined,
+        gridTemplateColumns: isMobile ? "1fr" : "1.2fr 0.8fr",
+        gap: isMobile ? "16px" : "20px",
+      }}>
+        <div style={{
+          ...heroPrincipal,
+          padding: isMobile ? "20px" : "28px",
+        }}>
           <p style={eyebrow}>Cadastro e gestão de alunos</p>
-          <h1 style={titulo}>Alunos</h1>
-          <p style={descricao}>
+          <h1 style={{
+            ...titulo,
+            fontSize: isMobile ? "32px" : "52px",
+          }}>Alunos</h1>
+          <p style={{
+            ...descricao,
+            fontSize: isMobile ? "14px" : "17px",
+          }}>
             Cadastre novos alunos com estrutura profissional, definindo plano,
-            cobrança, situação financeira e status de acompanhamento.
+            cobrança e status.
           </p>
         </div>
 
-        <div style={heroResumo}>
+        <div style={{
+          ...heroResumo,
+          padding: isMobile ? "20px" : "28px",
+        }}>
           <p style={heroResumoRotulo}>Base cadastrada</p>
-          <h2 style={heroResumoValor}>{totalAlunos}</h2>
-          <p style={heroResumoTexto}>
-            Total de alunos registrados na plataforma neste momento.
+          <h2 style={{
+            ...heroResumoValor,
+            fontSize: isMobile ? "36px" : "46px",
+          }}>{totalAlunos}</h2>
+          <p style={{
+            ...heroResumoTexto,
+            fontSize: isMobile ? "13px" : "15px",
+          }}>
+            Total de alunos registrados.
           </p>
         </div>
       </section>
 
-      <section style={painel}>
+      <section style={{
+        ...painel,
+        padding: isMobile ? "20px" : "30px",
+      }}>
         <div style={painelGlow}></div>
 
-        <div style={painelHeader}>
+        <div style={{
+          ...painelHeader,
+          flexDirection: isMobile ? "column" : "row",
+          gap: isMobile ? "12px" : "16px",
+        }}>
           <div>
             <p style={painelMini}>Cadastro premium</p>
-            <h2 style={painelTitulo}>Cadastrar aluno</h2>
+            <h2 style={{
+              ...painelTitulo,
+              fontSize: isMobile ? "26px" : "38px",
+            }}>Cadastrar aluno</h2>
           </div>
 
-          <div style={pillBox}>
-            <span style={pill}>Gestão organizada</span>
-          </div>
+          {!isMobile && (
+            <div style={pillBox}>
+              <span style={pill}>Gestão organizada</span>
+            </div>
+          )}
         </div>
 
-        <div style={grid}>
+        <div style={{
+          ...grid,
+          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+          gap: isMobile ? "14px" : "18px",
+        }}>
           <div style={campo}>
-            <label style={label}>Nome do aluno</label>
+            <label style={{
+              ...label,
+              fontSize: isMobile ? "13px" : "15px",
+            }}>Nome do aluno</label>
             <input
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Digite o nome completo"
-              style={input}
+              style={{
+                ...input,
+                height: isMobile ? "48px" : "56px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             />
           </div>
 
           <div style={campo}>
-            <label style={label}>Telefone</label>
+            <label style={{
+              ...label,
+              fontSize: isMobile ? "13px" : "15px",
+            }}>Telefone</label>
             <input
               value={telefone}
               onChange={(e) => setTelefone(e.target.value)}
               placeholder="Digite o telefone"
-              style={input}
+              style={{
+                ...input,
+                height: isMobile ? "48px" : "56px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             />
           </div>
 
           <div style={campo}>
-            <label style={label}>Plano de aulas</label>
+            <label style={{
+              ...label,
+              fontSize: isMobile ? "13px" : "15px",
+            }}>Plano de aulas</label>
             <select
               value={tipoPlano}
               onChange={(e) => setTipoPlano(e.target.value)}
-              style={select}
+              style={{
+                ...select,
+                height: isMobile ? "48px" : "56px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             >
               <option value="diaria">Diária</option>
               <option value="semanal">Semanal</option>
@@ -206,13 +278,20 @@ export default function AlunosPage() {
           </div>
 
           <div style={campo}>
-            <label style={label}>Plano de acesso</label>
+            <label style={{
+              ...label,
+              fontSize: isMobile ? "13px" : "15px",
+            }}>Plano de acesso</label>
             <select
               value={planoAcesso}
               onChange={(e) =>
                 setPlanoAcesso(e.target.value as "mensal" | "trimestral" | "anual")
               }
-              style={select}
+              style={{
+                ...select,
+                height: isMobile ? "48px" : "56px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             >
               <option value="mensal">Mensal - R$ 19,99</option>
               <option value="trimestral">Trimestral - R$ 45,00</option>
@@ -221,11 +300,18 @@ export default function AlunosPage() {
           </div>
 
           <div style={campo}>
-            <label style={label}>Tipo de pagamento</label>
+            <label style={{
+              ...label,
+              fontSize: isMobile ? "13px" : "15px",
+            }}>Tipo de pagamento</label>
             <select
               value={tipoPagamento}
               onChange={(e) => setTipoPagamento(e.target.value)}
-              style={select}
+              style={{
+                ...select,
+                height: isMobile ? "48px" : "56px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             >
               <option value="mensal">Mensal</option>
               <option value="por-aula">Por aula</option>
@@ -233,11 +319,18 @@ export default function AlunosPage() {
           </div>
 
           <div style={campo}>
-            <label style={label}>Forma de cobrança</label>
+            <label style={{
+              ...label,
+              fontSize: isMobile ? "13px" : "15px",
+            }}>Forma de cobrança</label>
             <select
               value={formaCobranca}
               onChange={(e) => setFormaCobranca(e.target.value)}
-              style={select}
+              style={{
+                ...select,
+                height: isMobile ? "48px" : "56px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             >
               <option value="antecipado">Antecipado</option>
               <option value="posterior">Posterior</option>
@@ -245,32 +338,53 @@ export default function AlunosPage() {
           </div>
 
           <div style={campo}>
-            <label style={label}>Valor</label>
+            <label style={{
+              ...label,
+              fontSize: isMobile ? "13px" : "15px",
+            }}>Valor</label>
             <input
               value={valor}
               onChange={(e) => setValor(e.target.value)}
               placeholder="Ex: 250"
-              style={input}
+              style={{
+                ...input,
+                height: isMobile ? "48px" : "56px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             />
           </div>
 
           <div style={campo}>
-            <label style={label}>Reposições realizadas</label>
+            <label style={{
+              ...label,
+              fontSize: isMobile ? "13px" : "15px",
+            }}>Reposições</label>
             <input
               type="number"
               min="0"
               value={reposicoes}
               onChange={(e) => setReposicoes(e.target.value)}
-              style={input}
+              style={{
+                ...input,
+                height: isMobile ? "48px" : "56px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             />
           </div>
 
           <div style={campo}>
-            <label style={label}>Status do aluno</label>
+            <label style={{
+              ...label,
+              fontSize: isMobile ? "13px" : "15px",
+            }}>Status do aluno</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              style={select}
+              style={{
+                ...select,
+                height: isMobile ? "48px" : "56px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             >
               <option value="ativo">Ativo</option>
               <option value="inativo">Inativo</option>
@@ -278,11 +392,18 @@ export default function AlunosPage() {
           </div>
 
           <div style={campo}>
-            <label style={label}>Status do pagamento</label>
+            <label style={{
+              ...label,
+              fontSize: isMobile ? "13px" : "15px",
+            }}>Status do pagamento</label>
             <select
               value={pagamentoStatus}
               onChange={(e) => setPagamentoStatus(e.target.value)}
-              style={select}
+              style={{
+                ...select,
+                height: isMobile ? "48px" : "56px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             >
               <option value="pendente">Pendente</option>
               <option value="pago">Pago</option>
@@ -290,26 +411,32 @@ export default function AlunosPage() {
             </select>
           </div>
 
-          <div style={campo}>
-            <label style={label}>Resumo profissional</label>
-            <div style={resumoBox}>
-              <span style={resumoTexto}>
-                Plano de aulas: {formatarPlano(tipoPlano)} • Acesso:{" "}
-                {formatarPlanoAcesso(planoAcesso)} • Pagamento:{" "}
-                {formatarPagamento(tipoPagamento)} • Cobrança:{" "}
-                {formatarCobranca(formaCobranca)}
-              </span>
+          {!isMobile && (
+            <div style={campo}>
+              <label style={label}>Resumo profissional</label>
+              <div style={resumoBox}>
+                <span style={resumoTexto}>
+                  Plano: {formatarPlano(tipoPlano)} • Acesso:{" "}
+                  {formatarPlanoAcesso(planoAcesso)} • Pagamento:{" "}
+                  {formatarPagamento(tipoPagamento)} • Cobrança:{" "}
+                  {formatarCobranca(formaCobranca)}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div style={acoes}>
           <button
             onClick={cadastrarAluno}
             disabled={salvando}
-            style={botaoPrincipal}
+            style={{
+              ...botaoPrincipal,
+              height: isMobile ? "52px" : "60px",
+              fontSize: isMobile ? "16px" : "18px",
+            }}
           >
-            {salvando ? "Salvando aluno..." : "Cadastrar aluno"}
+            {salvando ? "Salvando..." : "Cadastrar aluno"}
           </button>
         </div>
       </section>

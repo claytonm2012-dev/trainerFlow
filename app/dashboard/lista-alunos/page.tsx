@@ -24,6 +24,17 @@ type Aluno = {
 
 export default function ListaAlunosPage() {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    function handleResize() {
+      if (typeof window === "undefined") return;
+      setIsMobile(window.innerWidth <= 900);
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
 useEffect(() => {
   const user = auth.currentUser;
@@ -147,53 +158,118 @@ useEffect(() => {
 
   return (
     <div style={pagina}>
-      <section style={hero}>
-        <div style={heroPrincipal}>
+      <section style={{
+        ...hero,
+        display: isMobile ? "flex" : "grid",
+        flexDirection: isMobile ? "column" : undefined,
+        gridTemplateColumns: isMobile ? "1fr" : "1.1fr 0.9fr",
+        gap: isMobile ? "16px" : "20px",
+      }}>
+        <div style={{
+          ...heroPrincipal,
+          padding: isMobile ? "20px" : "28px",
+        }}>
           <p style={subtitulo}>Gestão de alunos cadastrados</p>
-          <h1 style={titulo}>Lista de alunos</h1>
-          <p style={descricao}>
+          <h1 style={{
+            ...titulo,
+            fontSize: isMobile ? "32px" : "52px",
+          }}>Lista de alunos</h1>
+          <p style={{
+            ...descricao,
+            fontSize: isMobile ? "14px" : "16px",
+          }}>
             Visualize, busque, edite, acompanhe o financeiro, cobre por WhatsApp
             e exclua alunos da sua base com segurança.
           </p>
         </div>
 
-        <div style={heroResumoGrid}>
-          <div style={heroCard}>
+        <div style={{
+          ...heroResumoGrid,
+          gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr",
+          gap: isMobile ? "10px" : "16px",
+        }}>
+          <div style={{
+            ...heroCard,
+            padding: isMobile ? "16px" : "22px",
+          }}>
             <p style={heroCardTitulo}>Total de alunos</p>
-            <h2 style={heroCardValorBranco}>{alunos.length}</h2>
-            <p style={heroCardTexto}>Todos os cadastros carregados</p>
+            <h2 style={{
+              ...heroCardValorBranco,
+              fontSize: isMobile ? "26px" : "34px",
+            }}>{alunos.length}</h2>
+            <p style={{
+              ...heroCardTexto,
+              fontSize: isMobile ? "11px" : "13px",
+            }}>Todos os cadastros</p>
           </div>
 
-          <div style={heroCard}>
+          <div style={{
+            ...heroCard,
+            padding: isMobile ? "16px" : "22px",
+          }}>
             <p style={heroCardTitulo}>Ativos</p>
-            <h2 style={heroCardValorVerde}>{totalAtivos}</h2>
-            <p style={heroCardTexto}>Alunos em atividade</p>
+            <h2 style={{
+              ...heroCardValorVerde,
+              fontSize: isMobile ? "26px" : "34px",
+            }}>{totalAtivos}</h2>
+            <p style={{
+              ...heroCardTexto,
+              fontSize: isMobile ? "11px" : "13px",
+            }}>Em atividade</p>
           </div>
 
-          <div style={heroCard}>
+          <div style={{
+            ...heroCard,
+            padding: isMobile ? "16px" : "22px",
+          }}>
             <p style={heroCardTitulo}>Pagos</p>
-            <h2 style={heroCardValorAzul}>{totalPago}</h2>
-            <p style={heroCardTexto}>Pagamentos confirmados</p>
+            <h2 style={{
+              ...heroCardValorAzul,
+              fontSize: isMobile ? "26px" : "34px",
+            }}>{totalPago}</h2>
+            <p style={{
+              ...heroCardTexto,
+              fontSize: isMobile ? "11px" : "13px",
+            }}>Confirmados</p>
           </div>
 
-          <div style={heroCard}>
-            <p style={heroCardTitulo}>Pendentes / atrasados</p>
-            <h2 style={heroCardValorAmarelo}>{totalPendentes}</h2>
-            <p style={heroCardTexto}>Demandam atenção financeira</p>
+          <div style={{
+            ...heroCard,
+            padding: isMobile ? "16px" : "22px",
+          }}>
+            <p style={heroCardTitulo}>Pendentes</p>
+            <h2 style={{
+              ...heroCardValorAmarelo,
+              fontSize: isMobile ? "26px" : "34px",
+            }}>{totalPendentes}</h2>
+            <p style={{
+              ...heroCardTexto,
+              fontSize: isMobile ? "11px" : "13px",
+            }}>Atenção financeira</p>
           </div>
         </div>
       </section>
 
-      <section style={buscaCard}>
+      <section style={{
+        ...buscaCard,
+        padding: isMobile ? "16px" : "24px",
+      }}>
         <div style={buscaHeader}>
           <div>
             <p style={buscaMini}>Busca rápida</p>
-            <h2 style={buscaTitulo}>Encontrar aluno por nome</h2>
+            <h2 style={{
+              ...buscaTitulo,
+              fontSize: isMobile ? "20px" : "28px",
+            }}>Encontrar aluno</h2>
           </div>
 
           {buscaNome.trim() ? (
-            <button onClick={() => setBuscaNome("")} style={botaoLimparBusca}>
-              Limpar busca
+            <button onClick={() => setBuscaNome("")} style={{
+              ...botaoLimparBusca,
+              height: isMobile ? "36px" : "44px",
+              fontSize: isMobile ? "12px" : "13px",
+            }}>
+              Limpar
             </button>
           ) : null}
         </div>
@@ -204,7 +280,11 @@ useEffect(() => {
             placeholder="Digite o nome do aluno"
             value={buscaNome}
             onChange={(e) => setBuscaNome(e.target.value)}
-            style={inputBusca}
+            style={{
+              ...inputBusca,
+              height: isMobile ? "48px" : "56px",
+              fontSize: isMobile ? "14px" : "15px",
+            }}
           />
         </div>
 
@@ -226,17 +306,30 @@ useEffect(() => {
           </p>
         </div>
       ) : (
-        <div style={gridCards}>
+        <div style={{
+          ...gridCards,
+          gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(420px, 1fr))",
+          gap: isMobile ? "16px" : "22px",
+        }}>
           {alunosFiltrados.map((aluno) => {
             const statusVisual = getStatusAluno(aluno.status);
             const pagamentoVisual = getStatusPagamento(aluno.pagamentoStatus);
 
             return (
-              <div key={aluno.id} style={cardAluno}>
+              <div key={aluno.id} style={{
+                ...cardAluno,
+                padding: isMobile ? "16px" : "24px",
+              }}>
                 <div style={cardHeader}>
                   <div>
-                    <h2 style={nomeAluno}>{aluno.nome || "Sem nome"}</h2>
-                    <p style={telefoneAluno}>{aluno.telefone || "Sem telefone"}</p>
+                    <h2 style={{
+                      ...nomeAluno,
+                      fontSize: isMobile ? "18px" : "24px",
+                    }}>{aluno.nome || "Sem nome"}</h2>
+                    <p style={{
+                      ...telefoneAluno,
+                      fontSize: isMobile ? "12px" : "14px",
+                    }}>{aluno.telefone || "Sem telefone"}</p>
                   </div>
 
                   <span
@@ -245,59 +338,125 @@ useEffect(() => {
                       background: statusVisual.background,
                       color: statusVisual.color,
                       border: statusVisual.border,
+                      padding: isMobile ? "6px 10px" : "10px 14px",
+                      fontSize: isMobile ? "11px" : "13px",
                     }}
                   >
                     {statusVisual.label}
                   </span>
                 </div>
 
-                <div style={blocosInfo}>
-                  <div style={infoBox}>
-                    <p style={infoLabel}>Plano</p>
-                    <p style={infoValor}>
+                <div style={{
+                  ...blocosInfo,
+                  gap: isMobile ? "10px" : "14px",
+                }}>
+                  <div style={{
+                    ...infoBox,
+                    padding: isMobile ? "12px" : "16px",
+                  }}>
+                    <p style={{
+                      ...infoLabel,
+                      fontSize: isMobile ? "11px" : "13px",
+                    }}>Plano</p>
+                    <p style={{
+                      ...infoValor,
+                      fontSize: isMobile ? "13px" : "15px",
+                    }}>
                       {formatarPlano(aluno.tipoPlano || "")}
                     </p>
                   </div>
 
-                  <div style={infoBox}>
-                    <p style={infoLabel}>Pagamento</p>
-                    <p style={infoValor}>
+                  <div style={{
+                    ...infoBox,
+                    padding: isMobile ? "12px" : "16px",
+                  }}>
+                    <p style={{
+                      ...infoLabel,
+                      fontSize: isMobile ? "11px" : "13px",
+                    }}>Pagamento</p>
+                    <p style={{
+                      ...infoValor,
+                      fontSize: isMobile ? "13px" : "15px",
+                    }}>
                       {formatarPagamento(aluno.tipoPagamento || "")}
                     </p>
                   </div>
 
-                  <div style={infoBox}>
-                    <p style={infoLabel}>Cobrança</p>
-                    <p style={infoValor}>
+                  <div style={{
+                    ...infoBox,
+                    padding: isMobile ? "12px" : "16px",
+                  }}>
+                    <p style={{
+                      ...infoLabel,
+                      fontSize: isMobile ? "11px" : "13px",
+                    }}>Cobrança</p>
+                    <p style={{
+                      ...infoValor,
+                      fontSize: isMobile ? "13px" : "15px",
+                    }}>
                       {formatarCobranca(aluno.formaCobranca || "")}
                     </p>
                   </div>
 
-                  <div style={infoBox}>
-                    <p style={infoLabel}>Valor</p>
-                    <p style={infoValor}>R$ {aluno.valor || "0"}</p>
+                  <div style={{
+                    ...infoBox,
+                    padding: isMobile ? "12px" : "16px",
+                  }}>
+                    <p style={{
+                      ...infoLabel,
+                      fontSize: isMobile ? "11px" : "13px",
+                    }}>Valor</p>
+                    <p style={{
+                      ...infoValor,
+                      fontSize: isMobile ? "13px" : "15px",
+                    }}>R$ {aluno.valor || "0"}</p>
                   </div>
 
-                  <div style={infoBox}>
-                    <p style={infoLabel}>Reposições</p>
-                    <p style={infoValor}>{aluno.reposicoes ?? 0}</p>
+                  <div style={{
+                    ...infoBox,
+                    padding: isMobile ? "12px" : "16px",
+                  }}>
+                    <p style={{
+                      ...infoLabel,
+                      fontSize: isMobile ? "11px" : "13px",
+                    }}>Reposições</p>
+                    <p style={{
+                      ...infoValor,
+                      fontSize: isMobile ? "13px" : "15px",
+                    }}>{aluno.reposicoes ?? 0}</p>
                   </div>
 
-                  <div style={infoBox}>
-                    <p style={infoLabel}>Status pagamento</p>
+                  <div style={{
+                    ...infoBox,
+                    padding: isMobile ? "12px" : "16px",
+                  }}>
+                    <p style={{
+                      ...infoLabel,
+                      fontSize: isMobile ? "11px" : "13px",
+                    }}>Status pagamento</p>
                     <p
                       style={{
                         ...infoValor,
                         color: pagamentoVisual.color,
+                        fontSize: isMobile ? "13px" : "15px",
                       }}
                     >
                       {pagamentoVisual.label}
                     </p>
                   </div>
 
-                  <div style={infoBoxFull}>
-                    <p style={infoLabel}>Dia do vencimento</p>
-                    <p style={infoValor}>
+                  <div style={{
+                    ...infoBoxFull,
+                    padding: isMobile ? "12px" : "16px",
+                  }}>
+                    <p style={{
+                      ...infoLabel,
+                      fontSize: isMobile ? "11px" : "13px",
+                    }}>Dia do vencimento</p>
+                    <p style={{
+                      ...infoValor,
+                      fontSize: isMobile ? "13px" : "15px",
+                    }}>
                       {aluno.diaVencimento
                         ? `Dia ${aluno.diaVencimento}`
                         : "Não definido"}
@@ -305,36 +464,56 @@ useEffect(() => {
                   </div>
                 </div>
 
-                <div style={acoes}>
+                <div style={{
+                  ...acoes,
+                  gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr",
+                  gap: isMobile ? "8px" : "12px",
+                }}>
                   <button
                     onClick={() =>
                       router.push(`/dashboard/editar-aluno/${aluno.id}`)
                     }
-                    style={botaoEditar}
+                    style={{
+                      ...botaoEditar,
+                      padding: isMobile ? "12px" : "16px",
+                      fontSize: isMobile ? "13px" : "15px",
+                    }}
                   >
                     Editar
                   </button>
 
                   <button
                     onClick={() => abrirFinanceiroAluno(aluno)}
-                    style={botaoFinanceiro}
+                    style={{
+                      ...botaoFinanceiro,
+                      padding: isMobile ? "12px" : "16px",
+                      fontSize: isMobile ? "13px" : "15px",
+                    }}
                   >
                     Financeiro
                   </button>
 
                   <button
                     onClick={() => cobrarAlunoNoWhatsApp(aluno)}
-                    style={botaoWhatsApp}
+                    style={{
+                      ...botaoWhatsApp,
+                      padding: isMobile ? "12px" : "16px",
+                      fontSize: isMobile ? "13px" : "15px",
+                    }}
                   >
                     Cobrar
                   </button>
 
                   <button
                     onClick={() => excluirAluno(aluno.id, aluno.nome)}
-                    style={botaoExcluir}
+                    style={{
+                      ...botaoExcluir,
+                      padding: isMobile ? "12px" : "16px",
+                      fontSize: isMobile ? "13px" : "15px",
+                    }}
                     disabled={processandoId === aluno.id}
                   >
-                    {processandoId === aluno.id ? "Excluindo..." : "Excluir"}
+                    {processandoId === aluno.id ? "..." : "Excluir"}
                   </button>
                 </div>
               </div>

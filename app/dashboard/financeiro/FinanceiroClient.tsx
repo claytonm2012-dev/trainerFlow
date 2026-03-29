@@ -47,6 +47,17 @@ type RegistroFinanceiro = {
 export default function FinanceiroClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    function handleResize() {
+      if (typeof window === "undefined") return;
+      setIsMobile(window.innerWidth <= 900);
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const alunoFiltro = searchParams.get("aluno") || "";
 
@@ -289,23 +300,44 @@ export default function FinanceiroClient() {
 
   return (
     <div style={pagina}>
-      <section style={hero}>
-        <div style={heroPrincipal}>
+      <section style={{
+        ...hero,
+        display: isMobile ? "flex" : "grid",
+        flexDirection: isMobile ? "column" : undefined,
+        gridTemplateColumns: isMobile ? "1fr" : "1.2fr 0.8fr",
+        gap: isMobile ? "16px" : "22px",
+      }}>
+        <div style={{
+          ...heroPrincipal,
+          padding: isMobile ? "20px" : "30px",
+        }}>
           <p style={eyebrow}>Financeiro e cobrança automática</p>
-          <h1 style={titulo}>Financeiro</h1>
-          <p style={descricao}>
-            Gere cobranças a partir das aulas cadastradas, acompanhe registros
-            pendentes e pagos e controle o fluxo financeiro do personal com mais
-            precisão.
+          <h1 style={{
+            ...titulo,
+            fontSize: isMobile ? "32px" : "52px",
+          }}>Financeiro</h1>
+          <p style={{
+            ...descricao,
+            fontSize: isMobile ? "14px" : "16px",
+          }}>
+            Gere cobranças, acompanhe registros pendentes e pagos e controle o fluxo financeiro.
           </p>
 
-          <div style={acoesTopo}>
+          <div style={{
+            ...acoesTopo,
+            flexDirection: isMobile ? "column" : "row",
+          }}>
             <button
               onClick={gerarFinanceiro}
               disabled={gerando}
-              style={botaoGerar}
+              style={{
+                ...botaoGerar,
+                width: isMobile ? "100%" : "auto",
+                height: isMobile ? "48px" : "52px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             >
-              {gerando ? "Gerando financeiro..." : "Gerar financeiro automático"}
+              {gerando ? "Gerando..." : "Gerar financeiro"}
             </button>
 
             <button
@@ -318,24 +350,39 @@ export default function FinanceiroClient() {
                 }
               }}
               disabled={atualizando}
-              style={botaoAtualizar}
+              style={{
+                ...botaoAtualizar,
+                width: isMobile ? "100%" : "auto",
+                height: isMobile ? "48px" : "52px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             >
-              {atualizando ? "Atualizando..." : "Atualizar painel"}
+              {atualizando ? "Atualizando..." : "Atualizar"}
             </button>
 
             {alunoFiltro ? (
               <button
                 onClick={() => router.push("/dashboard/financeiro")}
-                style={botaoLimparFiltro}
+                style={{
+                  ...botaoLimparFiltro,
+                  width: isMobile ? "100%" : "auto",
+                  height: isMobile ? "48px" : "52px",
+                  fontSize: isMobile ? "14px" : "15px",
+                }}
               >
-                Limpar filtro do aluno
+                Limpar filtro
               </button>
             ) : null}
 
             {existeBuscaAtiva ? (
               <button
                 onClick={() => setBuscaNome("")}
-                style={botaoLimparBusca}
+                style={{
+                  ...botaoLimparBusca,
+                  width: isMobile ? "100%" : "auto",
+                  height: isMobile ? "48px" : "52px",
+                  fontSize: isMobile ? "14px" : "15px",
+                }}
               >
                 Limpar busca
               </button>
@@ -343,117 +390,214 @@ export default function FinanceiroClient() {
           </div>
         </div>
 
-        <div style={heroResumoGrid}>
-          <div style={heroResumo}>
-            <p style={heroResumoRotulo}>Recebido geral</p>
-            <h2 style={heroResumoValorVerde}>{formatarMoeda(recebido)}</h2>
-            <p style={heroResumoTexto}>Total confirmado como pago.</p>
+        <div style={{
+          ...heroResumoGrid,
+          gap: isMobile ? "10px" : "18px",
+        }}>
+          <div style={{
+            ...heroResumo,
+            padding: isMobile ? "16px" : "22px",
+          }}>
+            <p style={heroResumoRotulo}>Recebido</p>
+            <h2 style={{
+              ...heroResumoValorVerde,
+              fontSize: isMobile ? "24px" : "34px",
+            }}>{formatarMoeda(recebido)}</h2>
+            <p style={{
+              ...heroResumoTexto,
+              fontSize: isMobile ? "11px" : "14px",
+            }}>Confirmado</p>
           </div>
 
-          <div style={heroResumo}>
-            <p style={heroResumoRotulo}>Pendente geral</p>
-            <h2 style={heroResumoValorAmarelo}>{formatarMoeda(pendente)}</h2>
-            <p style={heroResumoTexto}>Cobranças ainda em aberto.</p>
+          <div style={{
+            ...heroResumo,
+            padding: isMobile ? "16px" : "22px",
+          }}>
+            <p style={heroResumoRotulo}>Pendente</p>
+            <h2 style={{
+              ...heroResumoValorAmarelo,
+              fontSize: isMobile ? "24px" : "34px",
+            }}>{formatarMoeda(pendente)}</h2>
+            <p style={{
+              ...heroResumoTexto,
+              fontSize: isMobile ? "11px" : "14px",
+            }}>Em aberto</p>
           </div>
 
-          <div style={heroResumo}>
-            <p style={heroResumoRotulo}>Atrasado geral</p>
-            <h2 style={heroResumoValorVermelho}>{formatarMoeda(atrasado)}</h2>
-            <p style={heroResumoTexto}>Baseado no status dos alunos.</p>
+          <div style={{
+            ...heroResumo,
+            padding: isMobile ? "16px" : "22px",
+          }}>
+            <p style={heroResumoRotulo}>Atrasado</p>
+            <h2 style={{
+              ...heroResumoValorVermelho,
+              fontSize: isMobile ? "24px" : "34px",
+            }}>{formatarMoeda(atrasado)}</h2>
+            <p style={{
+              ...heroResumoTexto,
+              fontSize: isMobile ? "11px" : "14px",
+            }}>Status alunos</p>
           </div>
 
-          <div style={heroResumo}>
-            <p style={heroResumoRotulo}>Registros totais</p>
-            <h2 style={heroResumoValorAzul}>{registros.length}</h2>
-            <p style={heroResumoTexto}>Todos os lançamentos financeiros.</p>
+          <div style={{
+            ...heroResumo,
+            padding: isMobile ? "16px" : "22px",
+          }}>
+            <p style={heroResumoRotulo}>Registros</p>
+            <h2 style={{
+              ...heroResumoValorAzul,
+              fontSize: isMobile ? "24px" : "34px",
+            }}>{registros.length}</h2>
+            <p style={{
+              ...heroResumoTexto,
+              fontSize: isMobile ? "11px" : "14px",
+            }}>Total</p>
           </div>
         </div>
       </section>
 
-      <section style={buscaCard}>
+      <section style={{
+        ...buscaCard,
+        padding: isMobile ? "16px" : "24px",
+      }}>
         <div style={buscaHeader}>
           <div>
             <p style={buscaMini}>Busca interna</p>
-            <h2 style={buscaTitulo}>Buscar por nome do aluno</h2>
+            <h2 style={{
+              ...buscaTitulo,
+              fontSize: isMobile ? "20px" : "28px",
+            }}>Buscar aluno</h2>
           </div>
         </div>
 
         <div style={buscaLinha}>
           <input
             type="text"
-            placeholder="Digite o nome do aluno para localizar no financeiro"
+            placeholder="Digite o nome do aluno"
             value={buscaNome}
             onChange={(e) => setBuscaNome(e.target.value)}
-            style={inputBusca}
+            style={{
+              ...inputBusca,
+              height: isMobile ? "48px" : "56px",
+              fontSize: isMobile ? "14px" : "15px",
+            }}
           />
         </div>
 
-        <p style={buscaTexto}>
-          A busca funciona junto com o filtro vindo da lista de alunos, sem
-          perder o contexto já aberto.
-        </p>
+        {!isMobile && (
+          <p style={buscaTexto}>
+            A busca funciona junto com o filtro vindo da lista de alunos.
+          </p>
+        )}
       </section>
 
       {alunoFiltro ? (
-        <section style={filtroCard}>
+        <section style={{
+          ...filtroCard,
+          padding: isMobile ? "16px" : "28px",
+        }}>
           <div style={filtroHeader}>
             <div>
               <p style={filtroMini}>Filtro ativo</p>
-              <h2 style={filtroTitulo}>
-                Financeiro de {alunoSelecionado?.nome || alunoFiltro}
+              <h2 style={{
+                ...filtroTitulo,
+                fontSize: isMobile ? "20px" : "30px",
+              }}>
+                {alunoSelecionado?.nome || alunoFiltro}
               </h2>
             </div>
 
-            <div style={filtroBadge}>
-              {registrosFiltrados.length} registro
-              {registrosFiltrados.length === 1 ? "" : "s"}
+            <div style={{
+              ...filtroBadge,
+              padding: isMobile ? "6px 10px" : "10px 14px",
+              fontSize: isMobile ? "11px" : "13px",
+            }}>
+              {registrosFiltrados.length} registro{registrosFiltrados.length === 1 ? "" : "s"}
             </div>
           </div>
 
-          <div style={filtroGrid}>
-            <div style={filtroInfoBox}>
+          <div style={{
+            ...filtroGrid,
+            gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3, minmax(0, 1fr))",
+            gap: isMobile ? "10px" : "14px",
+          }}>
+            <div style={{
+              ...filtroInfoBox,
+              padding: isMobile ? "12px" : "16px",
+            }}>
               <p style={filtroInfoLabel}>Aluno</p>
-              <p style={filtroInfoValor}>
+              <p style={{
+                ...filtroInfoValor,
+                fontSize: isMobile ? "13px" : "16px",
+              }}>
                 {alunoSelecionado?.nome || alunoFiltro}
               </p>
             </div>
 
-            <div style={filtroInfoBox}>
+            <div style={{
+              ...filtroInfoBox,
+              padding: isMobile ? "12px" : "16px",
+            }}>
               <p style={filtroInfoLabel}>Telefone</p>
-              <p style={filtroInfoValor}>
+              <p style={{
+                ...filtroInfoValor,
+                fontSize: isMobile ? "13px" : "16px",
+              }}>
                 {alunoSelecionado?.telefone || "Não informado"}
               </p>
             </div>
 
-            <div style={filtroInfoBox}>
-              <p style={filtroInfoLabel}>Valor base</p>
-              <p style={filtroInfoValor}>
+            <div style={{
+              ...filtroInfoBox,
+              padding: isMobile ? "12px" : "16px",
+            }}>
+              <p style={filtroInfoLabel}>Valor</p>
+              <p style={{
+                ...filtroInfoValor,
+                fontSize: isMobile ? "13px" : "16px",
+              }}>
                 R$ {alunoSelecionado?.valor || "0"}
               </p>
             </div>
 
-            <div style={filtroInfoBox}>
+            <div style={{
+              ...filtroInfoBox,
+              padding: isMobile ? "12px" : "16px",
+            }}>
               <p style={filtroInfoLabel}>Cobrança</p>
-              <p style={filtroInfoValor}>
+              <p style={{
+                ...filtroInfoValor,
+                fontSize: isMobile ? "13px" : "16px",
+              }}>
                 {formatarCobranca(alunoSelecionado?.formaCobranca || "")}
               </p>
             </div>
 
-            <div style={filtroInfoBox}>
-              <p style={filtroInfoLabel}>Dia do vencimento</p>
-              <p style={filtroInfoValor}>
+            <div style={{
+              ...filtroInfoBox,
+              padding: isMobile ? "12px" : "16px",
+            }}>
+              <p style={filtroInfoLabel}>Vencimento</p>
+              <p style={{
+                ...filtroInfoValor,
+                fontSize: isMobile ? "13px" : "16px",
+              }}>
                 {alunoSelecionado?.diaVencimento
                   ? `Dia ${alunoSelecionado.diaVencimento}`
-                  : "Não definido"}
+                  : "N/D"}
               </p>
             </div>
 
-            <div style={filtroInfoBox}>
-              <p style={filtroInfoLabel}>Status atual</p>
+            <div style={{
+              ...filtroInfoBox,
+              padding: isMobile ? "12px" : "16px",
+            }}>
+              <p style={filtroInfoLabel}>Status</p>
               <p
                 style={{
                   ...filtroInfoValor,
                   color: getCorPagamento(alunoSelecionado?.pagamentoStatus),
+                  fontSize: isMobile ? "13px" : "16px",
                 }}
               >
                 {formatarStatusPagamento(alunoSelecionado?.pagamentoStatus)}
@@ -461,24 +605,46 @@ export default function FinanceiroClient() {
             </div>
           </div>
 
-          <div style={faixaResumoFiltrado}>
-            <div style={resumoFiltradoCard}>
-              <span style={resumoFiltradoRotulo}>Recebido do filtro</span>
-              <strong style={resumoFiltradoValorVerde}>
+          <div style={{
+            ...faixaResumoFiltrado,
+            gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+            gap: isMobile ? "10px" : "14px",
+          }}>
+            <div style={{
+              ...resumoFiltradoCard,
+              padding: isMobile ? "12px" : "16px",
+            }}>
+              <span style={resumoFiltradoRotulo}>Recebido</span>
+              <strong style={{
+                ...resumoFiltradoValorVerde,
+                fontSize: isMobile ? "22px" : "28px",
+              }}>
                 {formatarMoeda(totalRecebidoFiltrado)}
               </strong>
             </div>
 
-            <div style={resumoFiltradoCard}>
-              <span style={resumoFiltradoRotulo}>Pendente do filtro</span>
-              <strong style={resumoFiltradoValorAmarelo}>
+            <div style={{
+              ...resumoFiltradoCard,
+              padding: isMobile ? "12px" : "16px",
+            }}>
+              <span style={resumoFiltradoRotulo}>Pendente</span>
+              <strong style={{
+                ...resumoFiltradoValorAmarelo,
+                fontSize: isMobile ? "22px" : "28px",
+              }}>
                 {formatarMoeda(totalPendenteFiltrado)}
               </strong>
             </div>
 
-            <div style={resumoFiltradoCard}>
-              <span style={resumoFiltradoRotulo}>Meses lançados</span>
-              <strong style={resumoFiltradoValorAzul}>
+            <div style={{
+              ...resumoFiltradoCard,
+              padding: isMobile ? "12px" : "16px",
+            }}>
+              <span style={resumoFiltradoRotulo}>Meses</span>
+              <strong style={{
+                ...resumoFiltradoValorAzul,
+                fontSize: isMobile ? "22px" : "28px",
+              }}>
                 {mesesUnicosFiltrados.length}
               </strong>
             </div>
@@ -486,14 +652,20 @@ export default function FinanceiroClient() {
         </section>
       ) : null}
 
-      <section style={listaCard}>
+      <section style={{
+        ...listaCard,
+        padding: isMobile ? "16px" : "28px",
+      }}>
         <div style={cardHeader}>
           <div>
             <p style={cardMini}>Cobranças registradas</p>
-            <h2 style={cardTitulo}>
+            <h2 style={{
+              ...cardTitulo,
+              fontSize: isMobile ? "24px" : "36px",
+            }}>
               {alunoFiltro || existeBuscaAtiva
-                ? "Lançamentos filtrados"
-                : "Lançamentos financeiros"}
+                ? "Filtrados"
+                : "Lançamentos"}
             </h2>
           </div>
         </div>
@@ -506,8 +678,8 @@ export default function FinanceiroClient() {
           <div style={vazioBox}>
             <p style={vazioTexto}>
               {alunoFiltro || existeBuscaAtiva
-                ? "Nenhum registro encontrado para o filtro atual."
-                : 'Nenhum registro financeiro encontrado. Clique em "Gerar financeiro automático".'}
+                ? "Nenhum registro encontrado."
+                : "Nenhum registro. Clique em Gerar financeiro."}
             </p>
           </div>
         ) : (
@@ -523,11 +695,17 @@ export default function FinanceiroClient() {
                     ...itemFinanceiro,
                     border: statusVisual.border,
                     boxShadow: statusVisual.glow,
+                    flexDirection: isMobile ? "column" : "row",
+                    alignItems: isMobile ? "stretch" : "center",
+                    padding: isMobile ? "14px" : "18px",
                   }}
                 >
                   <div style={itemEsquerda}>
                     <div style={itemTopo}>
-                      <h3 style={itemNome}>{item.alunoNome || "Aluno"}</h3>
+                      <h3 style={{
+                        ...itemNome,
+                        fontSize: isMobile ? "18px" : "24px",
+                      }}>{item.alunoNome || "Aluno"}</h3>
 
                       <div
                         style={{
@@ -535,6 +713,8 @@ export default function FinanceiroClient() {
                           background: statusVisual.background,
                           color: statusVisual.color,
                           border: statusVisual.border,
+                          padding: isMobile ? "6px 10px" : "8px 12px",
+                          fontSize: isMobile ? "10px" : "12px",
                         }}
                       >
                         {statusVisual.label}
@@ -542,42 +722,56 @@ export default function FinanceiroClient() {
                     </div>
 
                     <div style={itemMetaLinha}>
-                      <span style={itemMeta}>
-                        Competência: {item.mes || "--/----"}
+                      <span style={{
+                        ...itemMeta,
+                        fontSize: isMobile ? "12px" : "14px",
+                      }}>
+                        {item.mes || "--/----"}
                       </span>
-                      <span style={itemMeta}>
-                        Valor: {formatarMoeda(Number(item.valor || 0))}
-                      </span>
-                    </div>
-
-                    <div style={itemMetaLinha}>
-                      <span style={itemMeta}>
-                        Criado em: {formatarDataHora(item.criadoEm)}
-                      </span>
-
-                      <span style={itemMeta}>
-                        Pago em: {formatarDataHora(item.pagoEm)}
+                      <span style={{
+                        ...itemMeta,
+                        fontSize: isMobile ? "12px" : "14px",
+                      }}>
+                        {formatarMoeda(Number(item.valor || 0))}
                       </span>
                     </div>
 
-                    <div style={itemMetaLinha}>
-                      <span style={itemMeta}>
-                        Telefone: {alunoDoRegistro?.telefone || "Não informado"}
-                      </span>
+                    {!isMobile && (
+                      <>
+                        <div style={itemMetaLinha}>
+                          <span style={itemMeta}>
+                            Criado: {formatarDataHora(item.criadoEm)}
+                          </span>
+                          <span style={itemMeta}>
+                            Pago: {formatarDataHora(item.pagoEm)}
+                          </span>
+                        </div>
 
-                      <span style={itemMeta}>
-                        Vencimento:{" "}
-                        {alunoDoRegistro?.diaVencimento
-                          ? `Dia ${alunoDoRegistro.diaVencimento}`
-                          : "Não definido"}
-                      </span>
-                    </div>
+                        <div style={itemMetaLinha}>
+                          <span style={itemMeta}>
+                            Tel: {alunoDoRegistro?.telefone || "N/I"}
+                          </span>
+                          <span style={itemMeta}>
+                            Venc: {alunoDoRegistro?.diaVencimento ? `Dia ${alunoDoRegistro.diaVencimento}` : "N/D"}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
 
-                  <div style={itemDireita}>
+                  <div style={{
+                    ...itemDireita,
+                    marginTop: isMobile ? "12px" : "0",
+                    justifyContent: isMobile ? "space-between" : "flex-end",
+                  }}>
                     <button
                       onClick={() => cobrarNoWhatsApp(item)}
-                      style={botaoWhatsApp}
+                      style={{
+                        ...botaoWhatsApp,
+                        height: isMobile ? "38px" : "42px",
+                        padding: isMobile ? "0 10px" : "0 14px",
+                        fontSize: isMobile ? "12px" : "13px",
+                      }}
                     >
                       Cobrar
                     </button>
@@ -585,27 +779,38 @@ export default function FinanceiroClient() {
                     <button
                       onClick={() => marcarComoPago(item.id)}
                       disabled={processandoId === item.id || item.status === "pago"}
-                      style={botaoPago}
+                      style={{
+                        ...botaoPago,
+                        height: isMobile ? "38px" : "42px",
+                        padding: isMobile ? "0 10px" : "0 14px",
+                        fontSize: isMobile ? "12px" : "13px",
+                      }}
                     >
-                      {processandoId === item.id && item.status !== "pago"
-                        ? "Processando..."
-                        : "Marcar pago"}
+                      {isMobile ? "Pago" : "Marcar pago"}
                     </button>
 
                     <button
                       onClick={() => marcarComoPendente(item.id)}
-                      disabled={
-                        processandoId === item.id || item.status === "pendente"
-                      }
-                      style={botaoPendente}
+                      disabled={processandoId === item.id || item.status === "pendente"}
+                      style={{
+                        ...botaoPendente,
+                        height: isMobile ? "38px" : "42px",
+                        padding: isMobile ? "0 10px" : "0 14px",
+                        fontSize: isMobile ? "12px" : "13px",
+                      }}
                     >
-                      Voltar pendente
+                      {isMobile ? "Pend." : "Pendente"}
                     </button>
 
                     <button
                       onClick={() => excluirRegistro(item.id)}
                       disabled={processandoId === item.id}
-                      style={botaoExcluir}
+                      style={{
+                        ...botaoExcluir,
+                        height: isMobile ? "38px" : "42px",
+                        padding: isMobile ? "0 10px" : "0 14px",
+                        fontSize: isMobile ? "12px" : "13px",
+                      }}
                     >
                       Excluir
                     </button>

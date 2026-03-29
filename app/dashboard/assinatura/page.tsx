@@ -25,10 +25,21 @@ type PersonalData = {
 
 export default function AssinaturaPage() {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState(false);
 
   const [carregando, setCarregando] = useState(true);
   const [processandoPlano, setProcessandoPlano] = useState("");
   const [personal, setPersonal] = useState<PersonalData | null>(null);
+
+  useEffect(() => {
+    function handleResize() {
+      if (typeof window === "undefined") return;
+      setIsMobile(window.innerWidth <= 900);
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     async function carregar() {
@@ -95,66 +106,133 @@ export default function AssinaturaPage() {
 
   return (
     <div style={pagina}>
-      <section style={hero}>
+      <section style={{
+        ...hero,
+        padding: isMobile ? "20px" : "28px",
+      }}>
         <p style={mini}>Assinatura do TrainerFlow</p>
-        <h1 style={titulo}>Escolha seu plano</h1>
-        <p style={descricao}>
+        <h1 style={{
+          ...titulo,
+          fontSize: isMobile ? "32px" : "48px",
+        }}>Escolha seu plano</h1>
+        <p style={{
+          ...descricao,
+          fontSize: isMobile ? "14px" : "16px",
+        }}>
           Continue usando o TrainerFlow para organizar agenda, financeiro,
           horários de aula e gestão dos seus alunos.
         </p>
       </section>
 
       <section style={painel}>
-        <div style={blocoInfo}>
+        <div style={{
+          ...blocoInfo,
+          padding: isMobile ? "18px" : "24px",
+        }}>
           <p style={rotulo}>Status atual</p>
-          <h2 style={valor}>{carregando ? "Carregando..." : personal?.statusAcesso || "--"}</h2>
-          <p style={texto}>
+          <h2 style={{
+            ...valor,
+            fontSize: isMobile ? "26px" : "34px",
+          }}>{carregando ? "Carregando..." : personal?.statusAcesso || "--"}</h2>
+          <p style={{
+            ...texto,
+            fontSize: isMobile ? "13px" : "14px",
+          }}>
             Plano atual:{" "}
             {personal?.plano ? formatarPlanoAssinatura(personal.plano) : "Não definido"}
           </p>
-          <p style={texto}>
+          <p style={{
+            ...texto,
+            fontSize: isMobile ? "13px" : "14px",
+          }}>
             Pagamento: {personal?.pagamentoStatus || "Não definido"}
           </p>
-          <p style={texto}>
+          <p style={{
+            ...texto,
+            fontSize: isMobile ? "13px" : "14px",
+          }}>
             Trial até: {personal?.trialFim ? new Date(personal.trialFim).toLocaleString("pt-BR") : "--"}
           </p>
         </div>
 
-        <div style={cards}>
-          <div style={cardPlano}>
+        <div style={{
+          ...cards,
+          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+          gap: isMobile ? "12px" : "16px",
+        }}>
+          <div style={{
+            ...cardPlano,
+            padding: isMobile ? "18px" : "24px",
+          }}>
             <p style={planoNome}>Mensal</p>
-            <h3 style={planoValor}>R$ 19,99</h3>
-            <p style={planoTexto}>Ideal para começar.</p>
+            <h3 style={{
+              ...planoValor,
+              fontSize: isMobile ? "26px" : "32px",
+            }}>R$ 19,99</h3>
+            <p style={{
+              ...planoTexto,
+              fontSize: isMobile ? "13px" : "14px",
+            }}>Ideal para começar.</p>
             <button
               onClick={() => escolherPlano("mensal")}
               disabled={processandoPlano === "mensal"}
-              style={botaoPlano}
+              style={{
+                ...botaoPlano,
+                height: isMobile ? "46px" : "52px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             >
               {processandoPlano === "mensal" ? "Abrindo..." : "Falar no WhatsApp"}
             </button>
           </div>
 
-          <div style={cardPlano}>
+          <div style={{
+            ...cardPlano,
+            padding: isMobile ? "18px" : "24px",
+          }}>
             <p style={planoNome}>Trimestral</p>
-            <h3 style={planoValor}>R$ 45,00</h3>
-            <p style={planoTexto}>Melhor custo por período.</p>
+            <h3 style={{
+              ...planoValor,
+              fontSize: isMobile ? "26px" : "32px",
+            }}>R$ 45,00</h3>
+            <p style={{
+              ...planoTexto,
+              fontSize: isMobile ? "13px" : "14px",
+            }}>Melhor custo por período.</p>
             <button
               onClick={() => escolherPlano("trimestral")}
               disabled={processandoPlano === "trimestral"}
-              style={botaoPlano}
+              style={{
+                ...botaoPlano,
+                height: isMobile ? "46px" : "52px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             >
               {processandoPlano === "trimestral" ? "Abrindo..." : "Falar no WhatsApp"}
             </button>
           </div>
 
-          <div style={cardPlano}>
+          <div style={{
+            ...cardPlano,
+            padding: isMobile ? "18px" : "24px",
+          }}>
             <p style={planoNome}>Anual</p>
-            <h3 style={planoValor}>R$ 120,00</h3>
-            <p style={planoTexto}>Mais econômico no longo prazo.</p>
+            <h3 style={{
+              ...planoValor,
+              fontSize: isMobile ? "26px" : "32px",
+            }}>R$ 120,00</h3>
+            <p style={{
+              ...planoTexto,
+              fontSize: isMobile ? "13px" : "14px",
+            }}>Mais econômico no longo prazo.</p>
             <button
               onClick={() => escolherPlano("anual")}
               disabled={processandoPlano === "anual"}
-              style={botaoPlano}
+              style={{
+                ...botaoPlano,
+                height: isMobile ? "46px" : "52px",
+                fontSize: isMobile ? "14px" : "15px",
+              }}
             >
               {processandoPlano === "anual" ? "Abrindo..." : "Falar no WhatsApp"}
             </button>
