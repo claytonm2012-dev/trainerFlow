@@ -29,8 +29,19 @@ type Usuario = {
 export default function AdminPage() {
   const router = useRouter();
 
+  const [isMobile, setIsMobile] = useState(false);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    function handleResize() {
+      if (typeof window === "undefined") return;
+      setIsMobile(window.innerWidth <= 900);
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -122,59 +133,132 @@ export default function AdminPage() {
   }, [usuarios]);
 
   if (carregando) {
-    return <p style={{ padding: 20 }}>Carregando...</p>;
+    return <p style={{ padding: 20, color: "#fff" }}>Carregando...</p>;
   }
 
   return (
     <div style={pagina}>
-      <h1 style={titulo}>PAINEL ADMIN AVANÇADO</h1>
+      <h1 style={{
+        ...titulo,
+        fontSize: isMobile ? "24px" : "32px",
+      }}>PAINEL ADMIN AVANÇADO</h1>
 
-      <div style={metricasGrid}>
-        <div style={metricaCard}>
+      <div style={{
+        ...metricasGrid,
+        gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fit, minmax(220px, 1fr))",
+        gap: isMobile ? "12px" : "16px",
+      }}>
+        <div style={{
+          ...metricaCard,
+          padding: isMobile ? "14px" : "18px",
+        }}>
           <p style={metricaRotulo}>Total de usuários</p>
-          <h2 style={metricaValor}>{totalUsuarios}</h2>
+          <h2 style={{
+            ...metricaValor,
+            fontSize: isMobile ? "26px" : "34px",
+          }}>{totalUsuarios}</h2>
         </div>
 
-        <div style={metricaCard}>
+        <div style={{
+          ...metricaCard,
+          padding: isMobile ? "14px" : "18px",
+        }}>
           <p style={metricaRotulo}>Personais no app</p>
-          <h2 style={metricaValor}>{totalPersonais}</h2>
+          <h2 style={{
+            ...metricaValor,
+            fontSize: isMobile ? "26px" : "34px",
+          }}>{totalPersonais}</h2>
         </div>
 
-        <div style={metricaCard}>
+        <div style={{
+          ...metricaCard,
+          padding: isMobile ? "14px" : "18px",
+        }}>
           <p style={metricaRotulo}>Ativos</p>
-          <h2 style={metricaValor}>{totalAtivos}</h2>
+          <h2 style={{
+            ...metricaValor,
+            fontSize: isMobile ? "26px" : "34px",
+          }}>{totalAtivos}</h2>
         </div>
 
-        <div style={metricaCard}>
+        <div style={{
+          ...metricaCard,
+          padding: isMobile ? "14px" : "18px",
+        }}>
           <p style={metricaRotulo}>Em trial</p>
-          <h2 style={metricaValor}>{totalTrial}</h2>
+          <h2 style={{
+            ...metricaValor,
+            fontSize: isMobile ? "26px" : "34px",
+          }}>{totalTrial}</h2>
         </div>
 
-        <div style={metricaCard}>
+        <div style={{
+          ...metricaCard,
+          padding: isMobile ? "14px" : "18px",
+        }}>
           <p style={metricaRotulo}>Pendentes</p>
-          <h2 style={metricaValor}>{totalPendentes}</h2>
+          <h2 style={{
+            ...metricaValor,
+            fontSize: isMobile ? "26px" : "34px",
+          }}>{totalPendentes}</h2>
         </div>
 
-        <div style={metricaCard}>
+        <div style={{
+          ...metricaCard,
+          padding: isMobile ? "14px" : "18px",
+        }}>
           <p style={metricaRotulo}>Bloqueados</p>
-          <h2 style={metricaValor}>{totalBloqueados}</h2>
+          <h2 style={{
+            ...metricaValor,
+            fontSize: isMobile ? "26px" : "34px",
+          }}>{totalBloqueados}</h2>
         </div>
       </div>
 
-      <div style={grid}>
+      <div style={{
+        ...grid,
+        gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))",
+      }}>
         {usuarios.map((user) => (
           <div key={user.id} style={card}>
-            <h3 style={nome}>{user.nome || "Sem nome"}</h3>
+            <h3 style={{
+              ...nome,
+              fontSize: isMobile ? "16px" : "18px",
+            }}>{user.nome || "Sem nome"}</h3>
 
-            <p style={textoInfo}>Email: {user.email}</p>
-            <p style={textoInfo}>Tipo: {user.tipo}</p>
-            <p style={textoInfo}>Plano: {user.plano}</p>
-            <p style={textoInfo}>Status: {user.statusAcesso}</p>
-            <p style={textoInfo}>Pagamento: {user.pagamentoStatus}</p>
+            <p style={{
+              ...textoInfo,
+              fontSize: isMobile ? "13px" : "14px",
+            }}>Email: {user.email}</p>
+            <p style={{
+              ...textoInfo,
+              fontSize: isMobile ? "13px" : "14px",
+            }}>Tipo: {user.tipo}</p>
+            <p style={{
+              ...textoInfo,
+              fontSize: isMobile ? "13px" : "14px",
+            }}>Plano: {user.plano}</p>
+            <p style={{
+              ...textoInfo,
+              fontSize: isMobile ? "13px" : "14px",
+            }}>Status: {user.statusAcesso}</p>
+            <p style={{
+              ...textoInfo,
+              fontSize: isMobile ? "13px" : "14px",
+            }}>Pagamento: {user.pagamentoStatus}</p>
 
-            <div style={acoes}>
+            <div style={{
+              ...acoes,
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr",
+              gap: isMobile ? "6px" : "8px",
+            }}>
               <button
-                style={btnVerde}
+                style={{
+                  ...btnVerde,
+                  fontSize: isMobile ? "12px" : "14px",
+                  padding: isMobile ? "10px 8px" : "8px",
+                }}
                 onClick={() =>
                   atualizarUsuario(user.id, {
                     statusAcesso: "liberado",
@@ -186,7 +270,11 @@ export default function AdminPage() {
               </button>
 
               <button
-                style={btnVermelho}
+                style={{
+                  ...btnVermelho,
+                  fontSize: isMobile ? "12px" : "14px",
+                  padding: isMobile ? "10px 8px" : "8px",
+                }}
                 onClick={() =>
                   atualizarUsuario(user.id, {
                     statusAcesso: "bloqueado",
@@ -197,7 +285,11 @@ export default function AdminPage() {
               </button>
 
               <button
-                style={btnAmarelo}
+                style={{
+                  ...btnAmarelo,
+                  fontSize: isMobile ? "12px" : "14px",
+                  padding: isMobile ? "10px 8px" : "8px",
+                }}
                 onClick={() => {
                   const novaData = new Date();
                   novaData.setDate(novaData.getDate() + 3);
@@ -208,11 +300,15 @@ export default function AdminPage() {
                   });
                 }}
               >
-                Resetar trial (3 dias)
+                Resetar trial
               </button>
 
               <button
-                style={btnAzul}
+                style={{
+                  ...btnAzul,
+                  fontSize: isMobile ? "12px" : "14px",
+                  padding: isMobile ? "10px 8px" : "8px",
+                }}
                 onClick={() =>
                   atualizarUsuario(user.id, {
                     plano: "anual",
@@ -227,7 +323,12 @@ export default function AdminPage() {
                 href={gerarLinkWhatsApp(user)}
                 target="_blank"
                 rel="noreferrer"
-                style={btnWhats}
+                style={{
+                  ...btnWhats,
+                  fontSize: isMobile ? "12px" : "14px",
+                  padding: isMobile ? "10px 8px" : "8px",
+                  gridColumn: isMobile ? "1 / -1" : "auto",
+                }}
               >
                 Cobrar no WhatsApp
               </a>
@@ -241,8 +342,8 @@ export default function AdminPage() {
 
 /* ================= ESTILO ================= */
 
-const pagina = {
-  padding: "30px",
+const pagina: React.CSSProperties = {
+  padding: "16px",
   color: "#fff",
 };
 
