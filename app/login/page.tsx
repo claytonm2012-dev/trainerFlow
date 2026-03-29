@@ -348,10 +348,7 @@ const mainStyle = {
   justifyContent: "center",
   padding: "20px 14px",
   fontFamily: "Arial, Helvetica, sans-serif",
-  backgroundImage: `url("/images/login-gym-bg.jpg")`,
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  backgroundRepeat: "no-repeat",
+  background: "radial-gradient(circle at top, rgba(37,99,235,0.35) 0%, rgba(9,17,47,1) 38%, rgba(11,11,13,1) 100%)",
 };
 
 const overlayDark = {
