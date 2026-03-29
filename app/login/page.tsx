@@ -352,6 +352,7 @@ const mainStyle = {
   backgroundSize: "cover",
   backgroundPosition: "center",
   backgroundRepeat: "no-repeat",
+  backgroundAttachment: "fixed" as const,
 };
 
 const overlayDark = {
@@ -515,7 +516,7 @@ const botaoVer = {
   height: "54px",
   borderRadius: "18px",
   border: "1px solid rgba(96,165,250,0.26)",
-  background: "linear-gradient(135deg, #60a5fa, #2563eb)",
+  backgroundImage: "linear-gradient(5deg, #7dfa60 0%, #25eb76 50%)",
   color: "#ffffff",
   fontSize: "16px",
   fontWeight: 800,
@@ -540,7 +541,7 @@ const botaoRecuperar = {
   border: "none",
   borderRadius: "999px",
   padding: "10px 16px",
-  background: "linear-gradient(135deg, #d946ef, #a855f7)",
+  backgroundImage: "linear-gradient(135deg, #00c83e 0%, rgba(85, 247, 87, 0.78) 50%)",
   color: "#ffffff",
   fontSize: "14px",
   fontWeight: 800,
