@@ -348,7 +348,7 @@ const mainStyle = {
   justifyContent: "center",
   padding: "20px 14px",
   fontFamily: "Arial, Helvetica, sans-serif",
-  backgroundImage: `url("/images/login-gym-bg.jpg")`,
+  backgroundImage: `url("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/equipamento-de-ginastica-3d_23-2151114226-nQyh6wBYWUAZhWXoDW06z8Bx3dkK8k.avif")`,
   backgroundSize: "cover",
   backgroundPosition: "center",
   backgroundRepeat: "no-repeat",
