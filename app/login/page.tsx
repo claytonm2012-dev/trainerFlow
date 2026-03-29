@@ -200,7 +200,7 @@ export default function LoginPage() {
 
             <div style={footerInfo}>
               <p style={footerInfoText}>
-                Organize alunos, agenda, evolução e financeiro em um só lugar.
+                Organize alunos, agenda, evolução e financeiro em um só lugar.     by Tony ° Since 2026
               </p>
             </div>
           </div>
@@ -595,7 +595,7 @@ const botaoCriar = {
 };
 
 const footerInfo = {
-  padding: "14px 14px",
+  padding: "12px 12px 7px 15px",
   borderRadius: "18px",
   background: "rgba(255,255,255,0.08)",
   border: "1px solid rgba(255,255,255,0.10)",
@@ -603,8 +603,10 @@ const footerInfo = {
 
 const footerInfoText = {
   margin: 0,
+  marginRight: "-1px",
   textAlign: "center" as const,
   color: "rgba(255,255,255,0.80)",
-  fontSize: "15px",
-  lineHeight: 1.6,
+  fontSize: "12px",
+  lineHeight: "1.5em",
+  letterSpacing: "0.012em",
 };
