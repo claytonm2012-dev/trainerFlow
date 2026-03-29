@@ -17,6 +17,7 @@ import {
 import db from "../../firebaseDb";
 import auth from "../../firebaseAuth";
 
+// --- DEFINIÇÕES DE TIPOS ---
 type Aluno = {
   id: string;
   nome?: string;
@@ -49,6 +50,7 @@ type ResumoAlunoMes = {
   reposicoes: number;
 };
 
+// --- CONSTANTES E CONFIGURAÇÕES ---
 const diasSemana: DiaSemanaItem[] = [
   { chave: "segunda", label: "Segunda" },
   { chave: "terca", label: "Terça" },
@@ -74,9 +76,17 @@ const coresAluno = [
 ];
 
 export default function AgendaPage() {
+  // Estados de Interface
   const [isMobile, setIsMobile] = useState(false);
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+  
+  // Estados de Dados
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [aulas, setAulas] = useState<Aula[]>([]);
+  
+  // Estados de Formulário (Cadastro)
   const [alunoNome, setAlunoNome] = useState("");
   const [data, setData] = useState("");
   const [hora, setHora] = useState("");
@@ -84,331 +94,320 @@ export default function AgendaPage() {
   const [modoCadastro, setModoCadastro] = useState<"manual" | "automatico">("manual");
   const [diasSelecionados, setDiasSelecionados] = useState<string[]>([]);
   const [quantidadeSemanas, setQuantidadeSemanas] = useState(4);
-  const [salvando, setSalvando] = useState(false);
-  const [carregando, setCarregando] = useState(true);
-  const [aulasHoje, setAulasHoje] = useState(0);
-  const [aulasSemana, setAulasSemana] = useState(0);
-  const [aulasMes, setAulasMes] = useState(0);
-  const [presencasMes, setPresencasMes] = useState(0);
-  const [faltasMes, setFaltasMes] = useState(0);
-  const [canceladasMes, setCanceladasMes] = useState(0);
-  const [reposicoesMes, setReposicoesMes] = useState(0);
+
+  // Estados de Filtro e Navegação
   const [buscaAluno, setBuscaAluno] = useState("");
   const [filtroAluno, setFiltroAluno] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | AulaStatus | "reposicao" | "hoje">("todos");
   const [inicioSemanaSelecionada, setInicioSemanaSelecionada] = useState(getInicioDaSemana(new Date()));
+
+  // Estados de Edição
   const [editandoId, setEditandoId] = useState("");
   const [editAlunoNome, setEditAlunoNome] = useState("");
   const [editData, setEditData] = useState("");
   const [editHora, setEditHora] = useState("");
   const [editReposicao, setEditReposicao] = useState("nao");
   const [editStatus, setEditStatus] = useState<AulaStatus>("pendente");
-  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+
   const editorRef = useRef<HTMLDivElement | null>(null);
 
+  // Efeito para Responsividade
   useEffect(() => {
-    function handleResize() {
-      if (typeof window === "undefined") return;
-      setIsMobile(window.innerWidth <= 768);
-    }
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  async function carregarDados() {
+  // Carregamento de Dados do Firebase
+  const carregarDados = async () => {
     try {
       setCarregando(true);
       const user = auth.currentUser;
-      if (!user) {
-        setAlunos([]); setAulas([]); return;
-      }
-      const [alunosSnapshot, agendaSnapshot] = await Promise.all([
-        getDocs(query(collection(db, "students"), where("userId", "==", user.uid))),
-        getDocs(query(collection(db, "agenda"), where("userId", "==", user.uid), orderBy("data", "desc")))
-      ]);
-      const alunosLista = alunosSnapshot.docs.map(docItem => ({ id: docItem.id, ...docItem.data() })) as Aluno[];
-      const aulasLista = agendaSnapshot.docs.map(docItem => ({ id: docItem.id, ...docItem.data() })) as Aula[];
-      
-      const hojeISO = new Date().toISOString().split("T")[0];
-      const inicioSemanaAtual = getInicioDaSemana(new Date());
-      const fimSemanaAtual = getFimDaSemanaPorInicio(inicioSemanaAtual);
-      const hoje = new Date();
-      const mesAt = hoje.getMonth() + 1;
-      const anoAt = hoje.getFullYear();
-      const aulasDoMesActual = aulasLista.filter(aula => {
-        if (!aula.data) return false;
-        const [ano, mes] = aula.data.split("-").map(Number);
-        return mes === mesAt && ano === anoAt;
-      });
+      if (!user) return;
 
-      setAlunos(alunosLista);
-      setAulas(aulasLista);
-      setAulasHoje(aulasLista.filter(a => a.data === hojeISO).length);
-      setAulasSemana(aulasLista.filter(a => a.data! >= inicioSemanaAtual && a.data! <= fimSemanaAtual).length);
-      setAulasMes(aulasDoMesActual.length);
-      setPresencasMes(aulasDoMesActual.filter(a => a.status === "presente").length);
-      setFaltasMes(aulasDoMesActual.filter(a => a.status === "faltou").length);
-      setCanceladasMes(aulasDoMesActual.filter(a => a.status === "cancelado").length);
-      setReposicoesMes(aulasDoMesActual.filter(a => a.reposicao === "sim").length);
-    } catch (error) { console.error(error);
-    } finally { setCarregando(false); }
-  }
+      const qAlunos = query(collection(db, "students"), where("userId", "==", user.uid));
+      const qAgenda = query(collection(db, "agenda"), where("userId", "==", user.uid), orderBy("data", "desc"));
+
+      const [snapAlunos, snapAgenda] = await Promise.all([getDocs(qAlunos), getDocs(qAgenda)]);
+
+      setAlunos(snapAlunos.docs.map(d => ({ id: d.id, ...d.data() })) as Aluno[]);
+      setAulas(snapAgenda.docs.map(d => ({ id: d.id, ...d.data() })) as Aula[]);
+    } catch (error) {
+      console.error("Erro Firestore:", error);
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   useEffect(() => { carregarDados(); }, []);
 
-  async function cadastrarAula() {
-    if (!alunoNome || !data || !hora) return alert("Selecione todos os campos.");
+  // Lógica de Cadastro de Aula Única
+  const cadastrarAula = async () => {
+    if (!alunoNome || !data || !hora) return alert("Preencha Aluno, Data e Hora.");
     try {
       setSalvando(true);
       const user = auth.currentUser;
-      if (!user) return alert("Usuário não autenticado.");
-      await addDoc(collection(db, "agenda"), {
-        alunoNome, data, hora, reposicao, status: "pendente", userId: user.uid, criadoEm: serverTimestamp()
-      });
-      alert("Aula cadastrada!"); setAlunoNome(""); setData(""); setHora("");
-      await carregarDados();
-    } catch (e) { console.error(e); } finally { setSalvando(false); }
-  }
+      if (!user) return;
 
-  async function cadastrarAulasAutomaticas() {
-    if (!alunoNome || !hora || diasSelecionados.length === 0) return alert("Faltam dados obrigatórios.");
+      await addDoc(collection(db, "agenda"), {
+        alunoNome,
+        data,
+        hora,
+        reposicao,
+        status: "pendente",
+        userId: user.uid,
+        criadoEm: serverTimestamp()
+      });
+
+      limparCampos();
+      await carregarDados();
+      alert("Aula agendada com sucesso!");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  // Lógica de Cadastro de Recorrência (Melhorada para Profissionais)
+  const cadastrarAulasAutomaticas = async () => {
+    if (!alunoNome || !hora || diasSelecionados.length === 0) {
+      return alert("Selecione o Aluno, a Hora e ao menos um Dia da Semana.");
+    }
+    
     try {
       setSalvando(true);
       const user = auth.currentUser;
-      if (!user) return alert("Usuário não autenticado.");
+      if (!user) return;
+
       const mapaDias: Record<string, number> = { domingo: 0, segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6 };
+      
       for (let s = 0; s < quantidadeSemanas; s++) {
-        for (const dia of diasSelecionados) {
-          let dBase = new Date(); dBase.setHours(12, 0, 0, 0); // Evita erros fuso
-          const diff = (mapaDias[dia] - dBase.getDay() + 7) % 7;
-          dBase.setDate(dBase.getDate() + (s * 7) + diff);
+        for (const diaChave of diasSelecionados) {
+          let dataBase = new Date();
+          dataBase.setHours(12, 0, 0, 0); // Trava no meio do dia para evitar erro de fuso
+          
+          const diaAlvo = mapaDias[diaChave];
+          const diaAtual = dataBase.getDay();
+          const diffSemanas = s * 7;
+          const diffDias = (diaAlvo - diaAtual + 7) % 7;
+          
+          dataBase.setDate(dataBase.getDate() + diffSemanas + diffDias);
+          const dataISO = dataBase.toISOString().split("T")[0];
+
           await addDoc(collection(db, "agenda"), {
-            alunoNome, data: dBase.toISOString().split("T")[0], hora, reposicao, status: "pendente", userId: user.uid, criadoEm: serverTimestamp()
+            alunoNome,
+            data: dataISO,
+            hora,
+            reposicao,
+            status: "pendente",
+            userId: user.uid,
+            criadoEm: serverTimestamp()
           });
         }
       }
-      alert("Aulas recorrentes cadastradas!"); setAlunoNome(""); setHora("");
-      setModoCadastro("manual"); setDiasSelecionados([]);
+
+      limparCampos();
       await carregarDados();
-    } catch (e) { console.error(e); } finally { setSalvando(false); }
-  }
+      alert("Recorrência mensal gerada com sucesso!");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSalvando(false);
+    }
+  };
 
-  function abrirEdicao(aula: Aula) {
-    setEditandoId(aula.id); setEditAlunoNome(aula.alunoNome || ""); setEditData(aula.data || "");
-    setEditHora(aula.hora || ""); setEditReposicao(aula.reposicao || "nao"); setEditStatus(aula.status || "pendente");
-    setTimeout(() => editorRef.current?.scrollIntoView({ behavior: "smooth" }), 120);
-  }
+  const limparCampos = () => {
+    setAlunoNome(""); setData(""); setHora(""); setReposicao("nao"); setDiasSelecionados([]); setModoCadastro("manual");
+  };
 
-  async function salvarEdicao() {
+  const atualizarStatus = async (id: string, s: AulaStatus) => {
+    try {
+      await updateDoc(doc(db, "agenda", id), { status: s });
+      await carregarDados();
+    } catch (e) { console.error(e); }
+  };
+
+  const salvarEdicao = async () => {
     if (!editandoId) return;
     try {
       setSalvandoEdicao(true);
       await updateDoc(doc(db, "agenda", editandoId), {
         alunoNome: editAlunoNome, data: editData, hora: editHora, reposicao: editReposicao, status: editStatus
       });
-      alert("Aula atualizada!"); setEditandoId(""); await carregarDados();
+      setEditandoId("");
+      await carregarDados();
     } catch (e) { console.error(e); } finally { setSalvandoEdicao(false); }
-  }
+  };
 
-  async function atualizarStatusAula(id: string, novoStatus: AulaStatus) {
-    try { await updateDoc(doc(db, "agenda", id), { status: novoStatus }); await carregarDados();
-    } catch (e) { console.error(e); }
-  }
-
-  async function excluirAula(id: string) {
-    if (window.confirm("Excluir esta aula permanentemente?")) {
-      try { await deleteDoc(doc(db, "agenda", id)); await carregarDados();
-      } catch (e) { console.error(e); }
+  const excluirAula = async (id: string) => {
+    if (confirm("Deseja realmente excluir este agendamento?")) {
+      await deleteDoc(doc(db, "agenda", id));
+      await carregarDados();
     }
-  }
+  };
 
-  const fimSemanaSelecionada = useMemo(() => getFimDaSemanaPorInicio(inicioSemanaSelecionada), [inicioSemanaSelecionada]);
+  // --- MEMOS DE FILTRAGEM ---
+  const fimSemanaSelecionada = useMemo(() => addDiasEmISO(inicioSemanaSelecionada, 6), [inicioSemanaSelecionada]);
 
-  const aulasFiltradasBase = useMemo(() => {
-    let lista = [...aulas];
-    if (filtroAluno) lista = lista.filter(a => a.alunoNome?.toLowerCase().includes(filtroAluno.toLowerCase()));
-    if (filtroStatus === "hoje") lista = lista.filter(a => a.data === new Date().toISOString().split("T")[0]);
-    else if (filtroStatus === "reposicao") lista = lista.filter(a => a.reposicao === "sim");
-    else if (filtroStatus !== "todos") lista = lista.filter(a => a.status === filtroStatus);
-    return lista;
+  const aulasFiltradas = useMemo(() => {
+    let result = [...aulas];
+    if (filtroAluno) result = result.filter(a => a.alunoNome?.toLowerCase().includes(filtroAluno.toLowerCase()));
+    if (filtroStatus === "hoje") result = result.filter(a => a.data === new Date().toISOString().split("T")[0]);
+    else if (filtroStatus === "reposicao") result = result.filter(a => a.reposicao === "sim");
+    else if (filtroStatus !== "todos") result = result.filter(a => a.status === filtroStatus);
+    return result;
   }, [aulas, filtroAluno, filtroStatus]);
 
-  const aulasDaSemanaSelecionada = useMemo(() => 
-    aulasFiltradasBase.filter(a => a.data! >= inicioSemanaSelecionada && a.data! <= fimSemanaSelecionada)
-  , [aulasFiltradasBase, inicioSemanaSelecionada, fimSemanaSelecionada]);
-
   const mapaSemanal = useMemo(() => {
-    const est: Record<string, Aula[]> = { segunda: [], terca: [], quarta: [], quinta: [], sexta: [], sabado: [], domingo: [] };
-    aulasDaSemanaSelecionada.forEach(a => { const c = getChaveDiaSemana(a.data!); if (est[c]) est[c].push(a); });
-    Object.keys(est).forEach(c => est[c].sort((a, b) => a.hora!.localeCompare(b.hora!)));
-    return est;
-  }, [aulasDaSemanaSelecionada]);
-
-  const gradeSemanal = useMemo(() => {
-    const grade: Record<string, Record<string, Aula[]>> = {};
-    diasSemana.forEach(d => { grade[d.chave] = {}; horariosFixos.forEach(h => grade[d.chave][h] = []); });
-    aulasDaSemanaSelecionada.forEach(a => {
-      const chaveDia = getChaveDiaSemana(a.data!); const horaBase = normalizarHoraParaGrade(a.hora);
-      if (grade[chaveDia]?.[horaBase]) grade[chaveDia][horaBase].push(a);
+    const estrutura: Record<string, Aula[]> = { segunda: [], terca: [], quarta: [], quinta: [], sexta: [], sabado: [], domingo: [] };
+    aulasFiltradas.forEach(a => {
+      if (a.data! >= inicioSemanaSelecionada && a.data! <= fimSemanaSelecionada) {
+        const d = getChaveDiaSemana(a.data!);
+        if (estrutura[d]) estrutura[d].push(a);
+      }
     });
-    return grade;
-  }, [aulasDaSemanaSelecionada]);
+    Object.keys(estrutura).forEach(k => estrutura[k].sort((a,b) => a.hora!.localeCompare(b.hora!)));
+    return estrutura;
+  }, [aulasFiltradas, inicioSemanaSelecionada, fimSemanaSelecionada]);
 
-  const percentualPresencaMes = useMemo(() => {
-    const base = presencasMes + faltasMes + canceladasMes;
-    return base === 0 ? 0 : Math.round((presencasMes / base) * 100);
-  }, [presencasMes, faltasMes, canceladasMes]);
-
+  // --- RENDERIZAÇÃO ---
   return (
-    <div style={pagina}>
-      <section style={hero}>
-        <div style={heroPrincipal}>
-          <p style={eyebrow}>Agenda e controle de aulas</p>
-          <h1 style={titulo}>Agenda</h1>
-          <p style={descricao}>Visualize e organize seus atendimentos de forma profissional.</p>
-        </div>
-        <div style={heroResumoGrid}>
-          <div style={heroResumo}><p style={heroResumoRotulo}>Hoje</p><h2 style={heroResumoValorAzul}>{aulasHoje}</h2></div>
-          <div style={heroResumo}><p style={heroResumoRotulo}>No Mês</p><h2 style={heroResumoValorVerde}>{aulasMes}</h2></div>
-          <div style={heroResumo}><p style={heroResumoRotulo}>Presença Mês</p><h2 style={heroResumoValorVerde}>{percentualPresencaMes}%</h2></div>
+    <div style={estilos.pagina}>
+      {/* HEADER */}
+      <section style={estilos.hero}>
+        <div style={estilos.heroPrincipal}>
+          <p style={estilos.eyebrow}>SISTEMA GCM PASSOS - MÓDULO FITNESS</p>
+          <h1 style={estilos.titulo}>Agenda de Treinos</h1>
+          <p style={estilos.descricao}>Controle profissional de alunos, presenças e recorrências automáticas.</p>
         </div>
       </section>
 
-      <section style={blocoPrincipal}>
-        <div style={buscaCard}>
-          <div style={buscaHeader}><div><p style={cardMini}>Filtros Avançados</p><h2 style={cardTitulo}>Filtrar Agenda</h2></div></div>
-          <div style={buscaLinha}>
-            <input style={inputBusca} placeholder="Nome do aluno" value={buscaAluno} onChange={e => setBuscaAluno(e.target.value)} />
-            <button style={botaoAplicarBusca} onClick={() => setFiltroAluno(buscaAluno)}>Filtrar Aluno</button>
-          </div>
-          <div style={filtrosRapidos}>
-            {["todos", "hoje", "pendente", "presente", "faltou", "cancelado", "reposicao"].map(f => (
-              <button key={f} style={{...botaoFiltroRapido, ...(filtroStatus === f ? botaoFiltroRapidoAtivo : {})}} onClick={() => setFiltroStatus(f as any)}>{primeiraMaiuscula(f)}</button>
-            ))}
-          </div>
+      {/* ÁREA DE FILTROS */}
+      <div style={estilos.buscaCard}>
+        <h2 style={estilos.cardTitulo}>Busca Rápida</h2>
+        <div style={estilos.buscaLinha}>
+          <input style={estilos.inputBusca} placeholder="Buscar aluno..." value={buscaAluno} onChange={e => setBuscaAluno(e.target.value)} />
+          <button style={estilos.botaoAplicarBusca} onClick={() => setFiltroAluno(buscaAluno)}>Filtrar</button>
+        </div>
+        <div style={estilos.filtrosRapidos}>
+          {["todos", "hoje", "pendente", "presente", "faltou"].map(f => (
+            <button key={f} style={{...estilos.botaoFiltroRapido, ...(filtroStatus === f ? estilos.botaoFiltroRapidoAtivo : {})}} onClick={() => setFiltroStatus(f as any)}>
+              {f.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* CADASTRO */}
+      <div style={estilos.formCard}>
+        <h2 style={estilos.cardTitulo}>Novo Agendamento</h2>
+        <div style={estilos.modoCadastroWrap}>
+          <button style={{...estilos.modoCadastroBotao, ...(modoCadastro === "manual" ? estilos.modoCadastroBotaoAtivo : {})}} onClick={() => setModoCadastro("manual")}>AULA ÚNICA</button>
+          <button style={{...estilos.modoCadastroBotao, ...(modoCadastro === "automatico" ? estilos.modoCadastroBotaoAtivo : {})}} onClick={() => setModoCadastro("automatico")}>RECORRÊNCIA MENSAL</button>
         </div>
 
-        <div style={formCard}>
-          <div style={cardHeader}><p style={cardMini}>Novo Registro</p><h2 style={cardTitulo}>Cadastrar Aula</h2></div>
-          <div style={modoCadastroWrap}>
-            <button style={{...modoCadastroBotao, ...(modoCadastro === "manual" ? modoCadastroBotaoAtivo : {})}} onClick={() => setModoCadastro("manual")}>Aula única</button>
-            <button style={{...modoCadastroBotao, ...(modoCadastro === "automatico" ? modoCadastroBotaoAtivo : {})}} onClick={() => setModoCadastro("automatico")}>Recorrência mensal</button>
-          </div>
-          {modoCadastro === "automatico" && (
-            <div style={recorrenciaCard}>
-              <select style={selectSemanas} value={quantidadeSemanas} onChange={e => setQuantidadeSemanas(Number(e.target.value))}>
-                {[4, 5, 6, 8].map(n => <option key={n} value={n}>{n} semanas</option>)}
-              </select>
-              <div style={diasSemanaCheckboxGrid}>
-                {diasSemana.map(dia => (
-                  <button key={dia.chave} style={{...diaSemanaChip, ...(diasSelecionados.includes(dia.chave) ? diaSemanaChipAtivo : {})}} onClick={() => setDiasSelecionados(prev => prev.includes(dia.chave) ? prev.filter(item => item !== dia.chave) : [...prev, dia.chave])}>{dia.label}</button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div style={formGrid}>
-            <div style={campo}><label style={label}>Aluno</label>
-              <select style={select} value={alunoNome} onChange={e => setAlunoNome(e.target.value)}>
-                <option value="">Selecione um aluno</option>
-                {alunos.map(a => <option key={a.id} value={a.nome}>{a.nome}</option>)}
-              </select>
-            </div>
-            <div style={campo}><label style={label}>Data</label><input type="date" style={input} value={data} onChange={e => setData(e.target.value)} disabled={modoCadastro === "automatico"} /></div>
-            <div style={campo}><label style={label}>Hora</label><input type="time" style={input} value={hora} onChange={e => setHora(e.target.value)} /></div>
-            <div style={campo}><label style={label}>Foi reposição?</label><select style={select} value={reposicao} onChange={e => setReposicao(e.target.value)}><option value="nao">Não</option><option value="sim">Sim</option></select></div>
-          </div>
-          <button style={botaoPrincipal} onClick={modoCadastro === "manual" ? cadastrarAula : cadastrarAulasAutomaticas}>{salvando ? "Salvando..." : "Cadastrar Aula"}</button>
-        </div>
-
-        {/* PLANILHA SEMANAL */}
-        <div style={quadroSemanalCard}>
-          <div style={cardHeaderPlanilha}>
-            <div><p style={cardMini}>Visão Semanal</p><h2 style={cardTitulo}>Grade de Horários</h2></div>
-            <div style={acoesSemana}>
-              <button style={botaoSemanaSecundario} onClick={() => setInicioSemanaSelecionada(prev => addDiasEmISO(prev, -7))}>Semana anterior</button>
-              <button style={botaoSemanaAtual} onClick={() => setInicioSemanaSelecionada(getInicioDaSemana(new Date()))}>Semana atual</button>
-              <button style={botaoSemanaSecundario} onClick={() => setInicioSemanaSelecionada(prev => addDiasEmISO(prev, 7))}>Próxima semana</button>
-            </div>
-          </div>
-          <p style={periodoValor}>{formatarData(inicioSemanaSelecionada)} até {formatarData(fimSemanaSelecionada)}</p>
-          
-          {isMobile ? (
-            <div style={carrosselDias}>
-              {diasSemana.map(dia => (
-                <div key={dia.chave} style={cardDiaMobile}>
-                  <h3 style={cardDiaTituloMobile}>{dia.label}</h3>
-                  {mapaSemanal[dia.chave].map(aula => (
-                    <div key={aula.id} style={{...blocoAulaMobile, background: getCorAluno(aula.alunoNome).fundo, border: `1px solid ${getCorAluno(aula.alunoNome).borda}`}}>
-                      <div style={blocoAluno}>{aula.hora} - {aula.alunoNome}</div>
-                      <div style={blocoAcoesStatus}>
-                        <button style={botaoPresente} onClick={() => atualizarStatusAula(aula.id, "presente")}>✔</button>
-                        <button style={botaoFalta} onClick={() => atualizarStatusAula(aula.id, "faltou")}>✖</button>
-                        <button style={botaoMiniEditar} onClick={() => abrirEdicao(aula)}>Edit</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+        {modoCadastro === "automatico" && (
+          <div style={estilos.recorrenciaCard}>
+            <p style={estilos.label}>Selecione os dias da semana para repetir:</p>
+            <div style={estilos.diasSemanaCheckboxGrid}>
+              {diasSemana.map(d => (
+                <button key={d.chave} style={{...estilos.diaSemanaChip, ...(diasSelecionados.includes(d.chave) ? estilos.diaSemanaChipAtivo : {})}} 
+                  onClick={() => setDiasSelecionados(prev => prev.includes(d.chave) ? prev.filter(x => x !== d.chave) : [...prev, d.chave])}>
+                  {d.label}
+                </button>
               ))}
             </div>
-          ) : (
-            <div style={gradeWrapper}>
-              <div style={gradeHeader}>
-                <div style={celulaHorarioHeader}>Hora</div>
-                {diasSemana.map(d => <div key={d.chave} style={celulaDiaHeader}>{d.label}</div>)}
-              </div>
-              {horariosFixos.map(h => (
-                <div key={h} style={gradeLinha}>
-                  <div style={celulaHorario}>{h}</div>
-                  {diasSemana.map(d => (
-                    <div key={d.chave} style={celulaAgenda}>
-                      {gradeSemanal[d.chave][h].map(aula => (
-                        <div key={aula.id} style={{...blocoAula, background: getCorAluno(aula.alunoNome).fundo}}>
-                          <div style={blocoAluno}>{aula.alunoNome}</div>
-                          <button style={{border:'none', background:'none', color:'#fff', cursor:'pointer'}} onClick={() => abrirEdicao(aula)}>✎</button>
+            <select style={estilos.selectSemanas} value={quantidadeSemanas} onChange={e => setQuantidadeSemanas(Number(e.target.value))}>
+              <option value={4}>Repetir por 4 Semanas (1 Mês)</option>
+              <option value={8}>Repetir por 8 Semanas (2 Meses)</option>
+              <option value={12}>Repetir por 12 Semanas (3 Meses)</option>
+            </select>
+          </div>
+        )}
+
+        <div style={estilos.formGrid}>
+          <div style={estilos.campo}><label style={estilos.label}>Aluno</label>
+            <select style={estilos.select} value={alunoNome} onChange={e => setAlunoNome(e.target.value)}>
+              <option value="">-- Selecionar --</option>
+              {alunos.map(a => <option key={a.id} value={a.nome}>{a.nome}</option>)}
+            </select>
+          </div>
+          <div style={estilos.campo}><label style={estilos.label}>Data</label>
+            <input type="date" style={estilos.input} value={data} onChange={e => setData(e.target.value)} disabled={modoCadastro === "automatico"} />
+          </div>
+          <div style={estilos.campo}><label style={estilos.label}>Hora</label><input type="time" style={estilos.input} value={hora} onChange={e => setHora(e.target.value)} /></div>
+          <div style={estilos.campo}><label style={estilos.label}>Reposição?</label>
+            <select style={estilos.select} value={reposicao} onChange={e => setReposicao(e.target.value)}>
+              <option value="nao">Não</option><option value="sim">Sim</option>
+            </select>
+          </div>
+        </div>
+        <button style={estilos.botaoPrincipal} onClick={modoCadastro === "manual" ? cadastrarAula : cadastrarAulasAutomaticas}>
+          {salvando ? "PROCESSANDO..." : "CONFIRMAR AGENDAMENTO"}
+        </button>
+      </div>
+
+      {/* GRADE SEMANAL VISUAL */}
+      <div style={estilos.quadroSemanalCard}>
+        <div style={estilos.cardHeaderPlanilha}>
+          <h2 style={estilos.cardTitulo}>Visualização da Semana</h2>
+          <div style={estilos.acoesSemana}>
+            <button style={estilos.botaoSemanaSecundario} onClick={() => setInicioSemanaSelecionada(prev => addDiasEmISO(prev, -7))}>ANTERIOR</button>
+            <button style={estilos.botaoSemanaAtual} onClick={() => setInicioSemanaSelecionada(getInicioDaSemana(new Date()))}>ATUAL</button>
+            <button style={estilos.botaoSemanaSecundario} onClick={() => setInicioSemanaSelecionada(prev => addDiasEmISO(prev, 7))}>PRÓXIMA</button>
+          </div>
+        </div>
+        <p style={estilos.periodoTexto}>{formatarDataVisual(inicioSemanaSelecionada)} até {formatarDataVisual(fimSemanaSelecionada)}</p>
+
+        <div style={isMobile ? estilos.mobileScroll : estilos.desktopGrade}>
+          {diasSemana.map(dia => (
+            <div key={dia.chave} style={estilos.colunaDia}>
+              <div style={estilos.headerDia}>{dia.label}</div>
+              <div style={estilos.listaAulasColuna}>
+                {mapaSemanal[dia.chave].length === 0 ? (
+                  <div style={estilos.vazio}>Vago</div>
+                ) : (
+                  mapaSemanal[dia.chave].map(aula => {
+                    const cor = getCorAluno(aula.alunoNome);
+                    return (
+                      <div key={aula.id} style={{...estilos.cardAula, background: cor.fundo, border: `1px solid ${cor.borda}`, boxShadow: cor.glow}}>
+                        <div style={estilos.cardAulaTopo}>
+                          <span style={estilos.horaBadge}>{aula.hora}</span>
+                          {aula.reposicao === "sim" && <span style={estilos.reposicaoBadge}>REP</span>}
                         </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* LISTA COMPLETA */}
-        <div style={listaCard}>
-          <h2 style={cardTitulo}>Aulas Cadastradas</h2>
-          <div style={lista}>
-            {aulasFiltradasBase.map(aula => (
-              <div key={aula.id} style={itemAula}>
-                <div>
-                  <h3 style={itemNome}>{aula.alunoNome}</h3>
-                  <p style={itemData}>{formatarData(aula.data)} às {aula.hora}</p>
-                </div>
-                <div style={itemListaAcoes}>
-                  <button style={botaoPresente} onClick={() => atualizarStatusAula(aula.id, "presente")}>✔</button>
-                  <button style={botaoFalta} onClick={() => atualizarStatusAula(aula.id, "faltou")}>✖</button>
-                  <button style={botaoMiniExcluir} onClick={() => excluirAula(aula.id)}>Excluir</button>
-                </div>
+                        <div style={{...estilos.nomeAluno, color: cor.texto}}>{aula.alunoNome}</div>
+                        <div style={estilos.statusRow}>
+                          <button style={estilos.btnStatus} onClick={() => atualizarStatus(aula.id, "presente")}>✔</button>
+                          <button style={estilos.btnStatusFalta} onClick={() => atualizarStatus(aula.id, "faltou")}>✖</button>
+                          <button style={estilos.btnEdit} onClick={() => { setEditandoId(aula.id); setEditAlunoNome(aula.alunoNome || ""); }}>EDIT</button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
 
-      {/* EDITOR */}
+      {/* EDITOR MODAL */}
       {editandoId && (
-        <div ref={editorRef} style={editorCard}>
-          <h2 style={cardTitulo}>Editar Aula</h2>
-          <div style={formGrid}>
-            <input style={input} value={editAlunoNome} onChange={e => setEditAlunoNome(e.target.value)} />
-            <input type="date" style={input} value={editData} onChange={e => setEditData(e.target.value)} />
-            <input type="time" style={input} value={editHora} onChange={e => setEditHora(e.target.value)} />
-          </div>
-          <div style={acoesEdicao}>
-            <button style={botaoCancelar} onClick={() => setEditandoId("")}>Cancelar</button>
-            <button style={botaoSalvarEdicao} onClick={salvarEdicao}>Salvar</button>
+        <div style={estilos.modalOverlay}>
+          <div style={estilos.modalContent} ref={editorRef}>
+            <h3 style={estilos.cardTitulo}>Ajustar Horário</h3>
+            <div style={estilos.formGrid}>
+              <input style={estilos.input} value={editAlunoNome} onChange={e => setEditAlunoNome(e.target.value)} />
+              <input type="date" style={estilos.input} value={editData} onChange={e => setEditData(e.target.value)} />
+              <input type="time" style={estilos.input} value={editHora} onChange={e => setEditHora(e.target.value)} />
+            </div>
+            <div style={estilos.modalAcoes}>
+              <button style={estilos.botaoCancelar} onClick={() => setEditandoId("")}>CANCELAR</button>
+              <button style={estilos.botaoSalvarEdicao} onClick={salvarEdicao}>SALVAR</button>
+            </div>
+            <button style={{...estilos.botaoCancelar, backgroundColor: '#ef4444', marginTop: '10px'}} onClick={() => { excluirAula(editandoId); setEditandoId(""); }}>EXCLUIR AULA</button>
           </div>
         </div>
       )}
@@ -416,100 +415,89 @@ export default function AgendaPage() {
   );
 }
 
-// UTILITÁRIOS
-function getInicioDaSemana(data: Date) {
-  const d = new Date(data); const dia = d.getDay();
+// --- FUNÇÕES DE APOIO ---
+function getInicioDaSemana(d: Date) {
+  const date = new Date(d);
+  const dia = date.getDay();
   const diff = dia === 0 ? -6 : 1 - dia;
-  d.setDate(d.getDate() + diff); return d.toISOString().split("T")[0];
+  date.setDate(date.getDate() + diff);
+  return date.toISOString().split("T")[0];
 }
-function getFimDaSemanaPorInicio(inicio: string) { return addDiasEmISO(inicio, 6); }
-function addDiasEmISO(iso: string, dias: number) {
-  const data = new Date(iso + "T12:00:00");
-  data.setDate(data.getDate() + dias); return data.toISOString().split("T")[0];
+function addDiasEmISO(iso: string, n: number) {
+  const d = new Date(iso + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split("T")[0];
 }
 function getChaveDiaSemana(iso: string) {
   const dias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
   return dias[new Date(iso + "T12:00:00").getDay()];
 }
-function formatarData(iso?: string) { if (!iso) return ""; const [ano, mes, dia] = iso.split("-"); return `${dia}/${mes}/${ano}`; }
-function normalizarHoraParaGrade(hora?: string) { return hora ? hora.split(":")[0].padStart(2, "0") + ":00" : ""; }
+function formatarDataVisual(iso: string) {
+  const [a, m, d] = iso.split("-");
+  return `${d}/${m}`;
+}
 function getCorAluno(nome?: string) {
   if (!nome) return coresAluno[0];
-  let s = 0; for (let i = 0; i < nome.length; i++) s += nome.charCodeAt(i);
-  return coresAluno[s % coresAluno.length];
+  let sum = 0; for (let i = 0; i < nome.length; i++) sum += nome.charCodeAt(i);
+  return coresAluno[sum % coresAluno.length];
 }
 function primeiraMaiuscula(t: string) { return t.charAt(0).toUpperCase() + t.slice(1); }
 
-// ESTILOS
-const pagina = { display: "flex", flexDirection: "column" as const, gap: "24px", padding: "20px", maxWidth: "1400px", margin: "0 auto", background: "#0f172a", color: "#fff" };
-const hero = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" };
-const heroPrincipal = { padding: "28px", background: "rgba(255,255,255,0.05)", borderRadius: "28px" };
-const eyebrow = { fontSize: "14px", color: "rgba(255,255,255,0.6)" };
-const titulo = { fontSize: "48px", fontWeight: 900, margin: "10px 0" };
-const descricao = { fontSize: "16px", color: "rgba(255,255,255,0.7)" };
-const heroResumoGrid = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "15px" };
-const heroResumo = { padding: "20px", background: "rgba(255,255,255,0.05)", borderRadius: "20px", textAlign: "center" as const };
-const heroResumoRotulo = { fontSize: "12px", color: "rgba(255,255,255,0.6)" };
-const heroResumoValorAzul = { fontSize: "32px", color: "#60a5fa" };
-const heroResumoValorVerde = { fontSize: "32px", color: "#4ade80" };
-const blocoPrincipal = { display: "flex", flexDirection: "column" as const, gap: "24px" };
-const buscaCard = { padding: "24px", background: "rgba(255,255,255,0.05)", borderRadius: "30px" };
-const buscaHeader = { marginBottom: "15px" };
-const buscaLinha = { display: "flex", gap: "10px", marginBottom: "15px" };
-const inputBusca = { flex: 1, height: "50px", borderRadius: "12px", padding: "0 15px", background: "#1e293b", border: "1px solid #334155", color: "#fff" };
-const botaoAplicarBusca = { padding: "0 20px", borderRadius: "12px", background: "#3b82f6", color: "#fff", border: "none", fontWeight: 700 };
-const filtrosRapidos = { display: "flex", gap: "8px", flexWrap: "wrap" as const };
-const botaoFiltroRapido = { padding: "8px 15px", borderRadius: "20px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none", fontSize: "12px", cursor: "pointer" };
-const botaoFiltroRapidoAtivo = { background: "#22c55e" };
-const cardTitulo = { fontSize: "24px", fontWeight: 800, marginBottom: "20px" };
-const quadroSemanalCard = { padding: "30px", background: "rgba(255,255,255,0.05)", borderRadius: "30px" };
-const cardHeaderPlanilha = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" };
-const acoesSemana = { display: "flex", gap: "10px" };
-const botaoSemanaSecundario = { padding: "8px 15px", borderRadius: "10px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none" };
-const botaoSemanaAtual = { padding: "8px 15px", borderRadius: "10px", background: "#3b82f6", color: "#fff", border: "none" };
-const gradeWrapper = { overflowX: "auto" as const, borderRadius: "20px", border: "1px solid #334155" };
-const gradeHeader = { display: "grid", gridTemplateColumns: "80px repeat(7, 1fr)", background: "#1e293b" };
-const celulaHorarioHeader = { padding: "15px", textAlign: "center" as const, fontWeight: 800 };
-const celulaDiaHeader = { padding: "15px", textAlign: "center" as const, fontWeight: 800, borderLeft: "1px solid #334155" };
-const gradeLinha = { display: "grid", gridTemplateColumns: "80px repeat(7, 1fr)", borderTop: "1px solid #334155" };
-const celulaHorario = { padding: "15px", textAlign: "center" as const, background: "#1e293b", fontWeight: 700 };
-const celulaAgenda = { padding: "10px", borderLeft: "1px solid #334155", minHeight: "80px" };
-const blocoAula = { padding: "8px", borderRadius: "10px", marginBottom: "5px", color: "#000", fontWeight: 700, fontSize: "12px" };
-const blocoAluno = { marginBottom: "5px" };
-const carrosselDias = { display: "flex", gap: "15px", overflowX: "auto" as const };
-const cardDiaMobile = { minWidth: "280px", padding: "15px", background: "rgba(255,255,255,0.05)", borderRadius: "20px" };
-const cardDiaTituloMobile = { fontSize: "18px", marginBottom: "10px" };
-const blocoAulaMobile = { padding: "12px", borderRadius: "15px", marginBottom: "10px" };
-const blocoAcoesStatus = { display: "flex", gap: "5px", marginTop: "10px" };
-const botaoPresente = { flex: 1, padding: "8px", borderRadius: "10px", background: "#22c55e", color: "#fff", border: "none" };
-const botaoFalta = { flex: 1, padding: "8px", borderRadius: "10px", background: "#ef4444", color: "#fff", border: "none" };
-const botaoMiniEditar = { padding: "5px 10px", borderRadius: "8px", background: "#3b82f6", color: "#fff", border: "none" };
-const botaoMiniExcluir = { padding: "5px 10px", borderRadius: "8px", background: "#ef4444", color: "#fff", border: "none" };
-const cardMini = { margin: 0, color: "rgba(255,255,255,0.56)", fontSize: "13px", textTransform: "uppercase" as const, letterSpacing: "0.8px" };
-const cardHeader = { position: "relative" as const, zIndex: 1, marginBottom: "22px" };
-const formCard = { padding: "30px", background: "rgba(255,255,255,0.05)", borderRadius: "30px" };
-const modoCadastroWrap = { display: "flex", gap: "10px", marginBottom: "20px" };
-const modoCadastroBotao = { padding: "10px 20px", borderRadius: "20px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none", cursor: "pointer" };
-const modoCadastroBotaoAtivo = { background: "#3b82f6" };
-const recorrenciaCard = { padding: "20px", background: "rgba(255,255,255,0.03)", borderRadius: "20px", marginBottom: "20px" };
-const selectSemanas = { width: "100%", height: "45px", borderRadius: "10px", background: "#1e293b", color: "#fff", marginBottom: "15px" };
-const diasSemanaCheckboxGrid = { display: "flex", gap: "8px", flexWrap: "wrap" as const };
-const diaSemanaChip = { padding: "8px 12px", borderRadius: "15px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none", fontSize: "12px" };
-const diaSemanaChipAtivo = { background: "#22c55e" };
-const formGrid = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" };
-const campo = { display: "flex", flexDirection: "column" as const, gap: "5px" };
-const label = { fontSize: "14px", fontWeight: 600 };
-const input = { height: "50px", borderRadius: "12px", padding: "0 15px", background: "#1e293b", border: "1px solid #334155", color: "#fff" };
-const select = { height: "50px", borderRadius: "12px", padding: "0 15px", background: "#1e293b", border: "1px solid #334155", color: "#fff" };
-const botaoPrincipal = { width: "100%", height: "55px", borderRadius: "15px", background: "#22c55e", color: "#fff", border: "none", fontWeight: 800, fontSize: "16px", cursor: "pointer" };
-const periodoValor = { color: "#ffffff", fontSize: "17px", fontWeight: 800, textAlign: 'center' as const, marginBottom: '15px' };
-const listaCard = { padding: "30px", background: "rgba(255,255,255,0.05)", borderRadius: "30px" };
-const lista = { display: "flex", flexDirection: "column" as const, gap: "15px" };
-const itemAula = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px", background: "rgba(255,255,255,0.03)", borderRadius: "20px" };
-const itemNome = { fontSize: "18px", fontWeight: 700, color: '#fff' };
-const itemData = { fontSize: "14px", color: "rgba(255,255,255,0.6)" };
-const itemListaAcoes = { display: "flex", gap: "10px" };
-const editorCard = { position: "fixed" as const, top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "90%", maxWidth: "500px", padding: "30px", background: "#1e293b", borderRadius: "30px", boxShadow: "0 0 50px rgba(0,0,0,0.5)", zIndex: 1000 };
-const acoesEdicao = { display: "flex", gap: "10px", marginTop: "20px" };
-const botaoCancelar = { flex: 1, height: "50px", borderRadius: "12px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none" };
-const botaoSalvarEdicao = { flex: 1, height: "50px", borderRadius: "12px", background: "#22c55e", color: "#fff", border: "none" };
+// --- OBJETOS DE ESTILO (COMPLETO) ---
+const estilos = {
+  pagina: { display: "flex", flexDirection: "column" as const, gap: "20px", padding: "16px", background: "#0f172a", minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif" },
+  hero: { background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)", borderRadius: "24px", padding: "30px", border: "1px solid #334155" },
+  heroPrincipal: { maxWidth: "600px" },
+  eyebrow: { fontSize: "12px", color: "#3b82f6", fontWeight: 800, letterSpacing: "1px" },
+  titulo: { fontSize: "36px", fontWeight: 900, margin: "10px 0", color: "#f8fafc" },
+  descricao: { color: "#94a3b8", fontSize: "16px", lineHeight: 1.6 },
+  buscaCard: { background: "#1e293b", padding: "20px", borderRadius: "20px", border: "1px solid #334155" },
+  cardTitulo: { fontSize: "18px", fontWeight: 800, marginBottom: "15px", color: "#e2e8f0" },
+  buscaLinha: { display: "flex", gap: "10px", marginBottom: "15px" },
+  inputBusca: { flex: 1, background: "#0f172a", border: "1px solid #334155", color: "#fff", padding: "12px", borderRadius: "12px" },
+  botaoAplicarBusca: { background: "#3b82f6", border: "none", color: "#fff", padding: "0 20px", borderRadius: "12px", fontWeight: 700, cursor: "pointer" },
+  filtrosRapidos: { display: "flex", gap: "8px", flexWrap: "wrap" as const },
+  botaoFiltroRapido: { background: "#334155", border: "none", color: "#94a3b8", padding: "8px 16px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, cursor: "pointer" },
+  botaoFiltroRapidoAtivo: { background: "#3b82f6", color: "#fff" },
+  formCard: { background: "#1e293b", padding: "24px", borderRadius: "24px", border: "1px solid #334155" },
+  modoCadastroWrap: { display: "flex", gap: "10px", marginBottom: "20px" },
+  modoCadastroBotao: { flex: 1, padding: "12px", borderRadius: "12px", background: "#334155", color: "#64748b", border: "none", fontWeight: 800, cursor: "pointer" },
+  modoCadastroBotaoAtivo: { background: "#3b82f6", color: "#fff" },
+  recorrenciaCard: { background: "rgba(59, 130, 246, 0.05)", padding: "15px", borderRadius: "15px", marginBottom: "20px", border: "1px solid #1d4ed8" },
+  diasSemanaCheckboxGrid: { display: "flex", gap: "6px", flexWrap: "wrap" as const, marginBottom: "12px" },
+  diaSemanaChip: { padding: "6px 12px", borderRadius: "10px", background: "#0f172a", color: "#94a3b8", border: "1px solid #334155", fontSize: "11px", cursor: "pointer" },
+  diaSemanaChipAtivo: { background: "#22c55e", color: "#fff", borderColor: "#4ade80" },
+  selectSemanas: { width: "100%", background: "#0f172a", color: "#fff", padding: "10px", borderRadius: "10px", border: "1px solid #334155" },
+  formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" },
+  campo: { display: "flex", flexDirection: "column" as const, gap: "5px" },
+  label: { fontSize: "12px", color: "#64748b", fontWeight: 700 },
+  input: { background: "#0f172a", border: "1px solid #334155", color: "#fff", padding: "12px", borderRadius: "12px" },
+  select: { background: "#0f172a", border: "1px solid #334155", color: "#fff", padding: "12px", borderRadius: "12px" },
+  botaoPrincipal: { width: "100%", background: "linear-gradient(to right, #22c55e, #16a34a)", padding: "16px", borderRadius: "12px", border: "none", color: "#fff", fontWeight: 900, fontSize: "15px", cursor: "pointer" },
+  quadroSemanalCard: { background: "#1e293b", padding: "24px", borderRadius: "24px", border: "1px solid #334155" },
+  cardHeaderPlanilha: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" as const, gap: "10px" },
+  acoesSemana: { display: "flex", gap: "8px" },
+  botaoSemanaSecundario: { background: "#334155", border: "none", color: "#fff", padding: "8px 12px", borderRadius: "10px", fontSize: "11px", cursor: "pointer" },
+  botaoSemanaAtual: { background: "#3b82f6", border: "none", color: "#fff", padding: "8px 12px", borderRadius: "10px", fontSize: "11px", fontWeight: 800, cursor: "pointer" },
+  periodoTexto: { color: "#64748b", fontSize: "13px", margin: "10px 0 20px 0", textAlign: "center" as const, fontWeight: 700 },
+  desktopGrade: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "12px" },
+  mobileScroll: { display: "flex", overflowX: "auto" as const, gap: "12px", paddingBottom: "10px" },
+  colunaDia: { minWidth: "220px", background: "rgba(255,255,255,0.02)", borderRadius: "18px", padding: "12px" },
+  headerDia: { textAlign: "center" as const, fontWeight: 900, padding: "12px", borderBottom: "1px solid #334155", marginBottom: "12px", color: "#3b82f6", fontSize: "14px" },
+  listaAulasColuna: { display: "flex", flexDirection: "column" as const, gap: "12px" },
+  cardAula: { padding: "14px", borderRadius: "16px", position: "relative" as const },
+  cardAulaTopo: { display: "flex", justifyContent: "space-between", marginBottom: "8px" },
+  horaBadge: { background: "rgba(0,0,0,0.3)", padding: "4px 8px", borderRadius: "8px", fontSize: "11px", fontWeight: 900, color: "#fff" },
+  reposicaoBadge: { background: "#eab308", color: "#000", padding: "2px 6px", borderRadius: "6px", fontSize: "9px", fontWeight: 900 },
+  nomeAluno: { fontSize: "16px", fontWeight: 900, marginBottom: "12px" },
+  statusRow: { display: "flex", gap: "6px" },
+  btnStatus: { flex: 1, background: "#22c55e", border: "none", color: "#fff", borderRadius: "10px", padding: "8px", cursor: "pointer" },
+  btnStatusFalta: { flex: 1, background: "#ef4444", border: "none", color: "#fff", borderRadius: "10px", padding: "8px", cursor: "pointer" },
+  btnEdit: { flex: 1, background: "#334155", border: "none", color: "#fff", borderRadius: "10px", padding: "8px", fontSize: "10px", fontWeight: 800, cursor: "pointer" },
+  vazio: { textAlign: "center" as const, padding: "30px", color: "#475569", fontSize: "12px", fontStyle: "italic" },
+  modalOverlay: { position: "fixed" as const, top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
+  modalContent: { background: "#1e293b", padding: "30px", borderRadius: "24px", width: "90%", maxWidth: "450px", border: "1px solid #334155" },
+  modalAcoes: { display: "flex", gap: "10px", marginTop: "20px" },
+  botaoCancelar: { flex: 1, padding: "14px", borderRadius: "12px", background: "#334155", color: "#fff", border: "none", cursor: "pointer" },
+  botaoSalvarEdicao: { flex: 1, padding: "14px", borderRadius: "12px", background: "#22c55e", color: "#fff", border: "none", fontWeight: 800, cursor: "pointer" }
+};
