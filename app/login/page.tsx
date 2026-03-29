@@ -348,10 +348,11 @@ const mainStyle = {
   justifyContent: "center",
   padding: "20px 14px",
   fontFamily: "Arial, Helvetica, sans-serif",
-  backgroundImage: `url("/images/login-gym-bg.jpg")`,
+  backgroundImage: `url("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/equipamento-de-ginastica-3d_23-2151114226-nQyh6wBYWUAZhWXoDW06z8Bx3dkK8k.avif")`,
   backgroundSize: "cover",
   backgroundPosition: "center",
   backgroundRepeat: "no-repeat",
+  backgroundAttachment: "fixed" as const,
 };
 
 const overlayDark = {
@@ -515,7 +516,7 @@ const botaoVer = {
   height: "54px",
   borderRadius: "18px",
   border: "1px solid rgba(96,165,250,0.26)",
-  background: "linear-gradient(135deg, #60a5fa, #2563eb)",
+  backgroundImage: "linear-gradient(295deg, #60c7fa 0%, rgb(37, 235, 118) 50%)",
   color: "#ffffff",
   fontSize: "16px",
   fontWeight: 800,
@@ -540,7 +541,7 @@ const botaoRecuperar = {
   border: "none",
   borderRadius: "999px",
   padding: "10px 16px",
-  background: "linear-gradient(135deg, #d946ef, #a855f7)",
+  backgroundImage: "linear-gradient(135deg, #00bbc8 0%, rgba(85, 247, 87, 0.78) 50%)",
   color: "#ffffff",
   fontSize: "14px",
   fontWeight: 800,
@@ -573,7 +574,7 @@ const botaoEntrar = {
   borderRadius: "18px",
   border: "1px solid rgba(255,255,255,0.10)",
   background:
-    "linear-gradient(135deg, #4ade80 0%, #22c55e 45%, #16a34a 100%)",
+    "linear-gradient(69deg, rgb(74, 222, 128) 0%, #22b5c5 45%, rgb(22, 163, 74) 100%)",
   color: "#ffffff",
   fontSize: "18px",
   fontWeight: 900,
@@ -585,7 +586,7 @@ const botaoCriar = {
   height: "56px",
   borderRadius: "18px",
   border: "1px solid rgba(34,211,238,0.18)",
-  background: "linear-gradient(135deg, #22d3ee, #06b6d4)",
+  background: "linear-gradient(46deg, #41ee22 0%, #06d4b2 50%)",
   color: "#ffffff",
   fontSize: "17px",
   fontWeight: 800,
