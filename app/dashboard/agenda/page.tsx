@@ -1,6 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import db from "../../firebaseDb";
+import auth from "../../firebaseAuth";
+import { limparTelefoneWhatsApp } from "@/utils/whatsapp";
 
 // ============================================================================
 // TYPES
@@ -8,7 +21,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 type Aluno = {
   id: string;
   nome?: string;
-  valorAula?: number;
+  valor?: string | number;
   telefone?: string;
   userId?: string;
 };
@@ -59,86 +72,6 @@ const coresAluno = [
   { fundo: "rgba(236,72,153,0.12)", borda: "rgba(236,72,153,0.20)", texto: "#f9a8d4", glow: "0 0 18px rgba(236,72,153,0.10)" },
   { fundo: "rgba(14,165,233,0.12)", borda: "rgba(14,165,233,0.20)", texto: "#7dd3fc", glow: "0 0 18px rgba(14,165,233,0.10)" },
 ];
-
-// ============================================================================
-// MOCK DATA - Dados de demonstracao
-// ============================================================================
-const MOCK_ALUNOS: Aluno[] = [
-  { id: "1", nome: "Carlos Silva", valorAula: 120, telefone: "11999998888", userId: "demo" },
-  { id: "2", nome: "Maria Santos", valorAula: 150, telefone: "11988887777", userId: "demo" },
-  { id: "3", nome: "Joao Oliveira", valorAula: 100, telefone: "11977776666", userId: "demo" },
-  { id: "4", nome: "Ana Costa", valorAula: 130, telefone: "11966665555", userId: "demo" },
-  { id: "5", nome: "Pedro Lima", valorAula: 140, telefone: "11955554444", userId: "demo" },
-  { id: "6", nome: "Julia Fernandes", valorAula: 110, telefone: "11944443333", userId: "demo" },
-];
-
-function gerarAulasMock(): Aula[] {
-  const aulas: Aula[] = [];
-  const hoje = new Date();
-  hoje.setHours(12, 0, 0, 0);
-  
-  const statusOptions: AulaStatus[] = ["pendente", "presente", "faltou", "cancelado"];
-  const horariosAula = ["06:00", "07:00", "08:00", "09:00", "10:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
-  
-  let idCounter = 1;
-  
-  // Gerar aulas para as ultimas 2 semanas e proximas 2 semanas
-  for (let dia = -14; dia <= 14; dia++) {
-    const data = new Date(hoje);
-    data.setDate(hoje.getDate() + dia);
-    const dataISO = data.toISOString().split("T")[0];
-    const diaSemana = data.getDay();
-    
-    // Pular domingos (menos aulas)
-    if (diaSemana === 0 && Math.random() > 0.3) continue;
-    
-    // 2-5 aulas por dia util
-    const numAulas = diaSemana === 0 || diaSemana === 6 ? Math.floor(Math.random() * 3) : Math.floor(Math.random() * 4) + 2;
-    
-    const horariosUsados = new Set<string>();
-    
-    for (let i = 0; i < numAulas; i++) {
-      let horario = horariosAula[Math.floor(Math.random() * horariosAula.length)];
-      while (horariosUsados.has(horario)) {
-        horario = horariosAula[Math.floor(Math.random() * horariosAula.length)];
-      }
-      horariosUsados.add(horario);
-      
-      const aluno = MOCK_ALUNOS[Math.floor(Math.random() * MOCK_ALUNOS.length)];
-      
-      // Status baseado na data
-      let status: AulaStatus;
-      if (dia < 0) {
-        // Aulas passadas - maioria presente
-        const rand = Math.random();
-        if (rand < 0.7) status = "presente";
-        else if (rand < 0.85) status = "faltou";
-        else if (rand < 0.95) status = "cancelado";
-        else status = "pendente";
-      } else if (dia === 0) {
-        // Aulas de hoje - mix
-        status = Math.random() < 0.5 ? "pendente" : "presente";
-      } else {
-        // Aulas futuras - pendente
-        status = "pendente";
-      }
-      
-      aulas.push({
-        id: String(idCounter++),
-        alunoId: aluno.id,
-        alunoNome: aluno.nome,
-        data: dataISO,
-        hora: horario,
-        reposicao: Math.random() < 0.1 ? "sim" : "nao",
-        status,
-        valorAula: aluno.valorAula,
-        userId: "demo",
-      });
-    }
-  }
-  
-  return aulas;
-}
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -207,12 +140,12 @@ function formatarMoeda(valor: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
 }
 
-function gerarLinkWhatsApp(telefone?: string, alunoNome?: string, data?: string, hora?: string): string {
-  const numero = (telefone || "").replace(/\D/g, "");
+function gerarLinkWhatsAppAula(telefone?: string, alunoNome?: string, data?: string, hora?: string): string {
+  const numero = limparTelefoneWhatsApp(telefone);
   const mensagem = encodeURIComponent(
     `Ola ${alunoNome || "Aluno"}! Lembrete da sua aula de treino agendada para ${formatarData(data)} as ${hora || "--:--"}. Confirme sua presenca!`
   );
-  return `https://wa.me/55${numero}?text=${mensagem}`;
+  return `https://wa.me/${numero}?text=${mensagem}`;
 }
 
 function getDataDoDiaISO(inicioSemana: string, chaveDia: string): string {
@@ -389,22 +322,43 @@ export default function AgendaPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Carregar dados mock
-  const carregarDados = useCallback(() => {
-    setIsLoading(true);
-    
-    // Simular delay de rede
-    setTimeout(() => {
-      const aulasGeradas = gerarAulasMock();
-      
+  // Carregar dados do Firebase
+  const carregarDados = useCallback(async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      // Carregar alunos
+      const alunosSnapshot = await getDocs(
+        query(collection(db, "students"), where("userId", "==", user.uid))
+      );
+      const listaAlunos = alunosSnapshot.docs.map((docItem) => ({
+        id: docItem.id,
+        ...docItem.data(),
+      })) as Aluno[];
+
+      // Carregar aulas
+      const aulasSnapshot = await getDocs(
+        query(collection(db, "agenda"), where("userId", "==", user.uid))
+      );
+      const listaAulas = aulasSnapshot.docs.map((docItem) => ({
+        id: docItem.id,
+        ...docItem.data(),
+      })) as Aula[];
+
       const hoje = new Date();
       const hojeISO = hoje.toISOString().split("T")[0];
       const inicioSemanaAtual = getInicioDaSemana(hoje);
       const fimSemanaAtual = getFimDaSemanaPorInicio(inicioSemanaAtual);
 
-      const totalHoje = aulasGeradas.filter((aula) => aula.data === hojeISO).length;
+      const totalHoje = listaAulas.filter((aula) => aula.data === hojeISO).length;
 
-      const totalSemanaAtual = aulasGeradas.filter((aula) => {
+      const totalSemanaAtual = listaAulas.filter((aula) => {
         if (!aula.data) return false;
         return aula.data >= inicioSemanaAtual && aula.data <= fimSemanaAtual;
       }).length;
@@ -412,7 +366,7 @@ export default function AgendaPage() {
       const mesAtual = hoje.getMonth() + 1;
       const anoAtual = hoje.getFullYear();
 
-      const aulasDoMesAtual = aulasGeradas.filter((aula) => {
+      const aulasDoMesAtual = listaAulas.filter((aula) => {
         if (!aula.data) return false;
         const [ano, mes] = aula.data.split("-").map(Number);
         return mes === mesAtual && ano === anoAtual;
@@ -423,101 +377,131 @@ export default function AgendaPage() {
         .filter((aula) => aula.status === "presente")
         .reduce((acc, aula) => acc + (aula.valorAula || 0), 0);
 
-      setAlunos(MOCK_ALUNOS);
-      setAulas(aulasGeradas);
+      setAlunos(listaAlunos);
+      setAulas(listaAulas);
       setAulasHoje(totalHoje);
       setAulasSemana(totalSemanaAtual);
       setFaturamentoMensal(faturamento);
       setAulasMes(aulasDoMesAtual.length);
       setPresencasMes(aulasDoMesAtual.filter((a) => a.status === "presente").length);
       setFaltasMes(aulasDoMesAtual.filter((a) => a.status === "faltou").length);
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   }, []);
 
   useEffect(() => {
-    carregarDados();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        carregarDados();
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
   }, [carregarDados]);
 
   // Cadastrar aula manual
-  function cadastrarAula() {
+  async function cadastrarAula() {
     if (!alunoNome) return alert("Selecione um aluno");
     if (!data) return alert("Informe a data");
     if (!hora) return alert("Informe a hora");
 
+    const user = auth.currentUser;
+    if (!user) return alert("Usuario nao autenticado");
+
     setSalvando(true);
-    const aluno = alunos.find((a) => a.nome === alunoNome);
-
-    const novaAula: Aula = {
-      id: String(Date.now()),
-      alunoNome,
-      alunoId: aluno?.id || "",
-      data,
-      hora,
-      reposicao,
-      valorAula: aluno?.valorAula || 0,
-      status: "pendente",
-      userId: "demo",
-    };
-
-    setAulas(prev => [...prev, novaAula]);
     
-    alert("Aula cadastrada com sucesso!");
-    setAlunoNome("");
-    setData("");
-    setHora("");
-    setReposicao("nao");
-    setSalvando(false);
+    try {
+      const aluno = alunos.find((a) => a.nome === alunoNome);
+      const valorNumerico = aluno?.valor ? Number(aluno.valor) : 0;
+
+      await addDoc(collection(db, "agenda"), {
+        alunoNome,
+        alunoId: aluno?.id || "",
+        data,
+        hora,
+        reposicao,
+        valorAula: valorNumerico,
+        status: "pendente",
+        userId: user.uid,
+        criadoEm: new Date().toISOString(),
+      });
+
+      alert("Aula cadastrada com sucesso!");
+      setAlunoNome("");
+      setData("");
+      setHora("");
+      setReposicao("nao");
+      carregarDados();
+    } catch (error) {
+      console.error("Erro ao cadastrar aula:", error);
+      alert("Erro ao cadastrar aula");
+    } finally {
+      setSalvando(false);
+    }
   }
 
   // Cadastrar aulas automaticas (recorrentes)
-  function cadastrarAulasAutomaticas() {
+  async function cadastrarAulasAutomaticas() {
     if (!alunoNome) return alert("Selecione um aluno");
     if (!hora) return alert("Informe a hora");
     if (diasSelecionados.length === 0) return alert("Selecione pelo menos um dia da semana");
 
+    const user = auth.currentUser;
+    if (!user) return alert("Usuario nao autenticado");
+
     setSalvando(true);
-    const aluno = alunos.find((a) => a.nome === alunoNome);
-    const hoje = new Date();
-    const novasAulas: Aula[] = [];
+    
+    try {
+      const aluno = alunos.find((a) => a.nome === alunoNome);
+      const valorNumerico = aluno?.valor ? Number(aluno.valor) : 0;
+      const hoje = new Date();
 
-    for (let semana = 0; semana < quantidadeSemanas; semana++) {
-      for (const dia of diasSelecionados) {
-        const dataBase = new Date(hoje);
-        dataBase.setHours(12, 0, 0, 0);
-        dataBase.setDate(hoje.getDate() + semana * 7);
+      for (let semana = 0; semana < quantidadeSemanas; semana++) {
+        for (const dia of diasSelecionados) {
+          const dataBase = new Date(hoje);
+          dataBase.setHours(12, 0, 0, 0);
+          dataBase.setDate(hoje.getDate() + semana * 7);
 
-        while (getChaveDiaSemana(dataBase.toISOString().split("T")[0]) !== dia) {
-          dataBase.setDate(dataBase.getDate() + 1);
+          while (getChaveDiaSemana(dataBase.toISOString().split("T")[0]) !== dia) {
+            dataBase.setDate(dataBase.getDate() + 1);
+          }
+
+          const dataISO = dataBase.toISOString().split("T")[0];
+
+          await addDoc(collection(db, "agenda"), {
+            alunoNome,
+            alunoId: aluno?.id || "",
+            data: dataISO,
+            hora,
+            reposicao,
+            valorAula: valorNumerico,
+            status: "pendente",
+            userId: user.uid,
+            criadoEm: new Date().toISOString(),
+          });
         }
-
-        const dataISO = dataBase.toISOString().split("T")[0];
-
-        novasAulas.push({
-          id: String(Date.now() + Math.random()),
-          alunoNome,
-          alunoId: aluno?.id || "",
-          data: dataISO,
-          hora,
-          reposicao,
-          valorAula: aluno?.valorAula || 0,
-          status: "pendente",
-          userId: "demo",
-        });
       }
+
+      alert(`${quantidadeSemanas * diasSelecionados.length} aulas recorrentes cadastradas com sucesso!`);
+      setAlunoNome("");
+      setData("");
+      setHora("");
+      setReposicao("nao");
+      setDiasSelecionados([]);
+      setQuantidadeSemanas(4);
+      setModoCadastro("manual");
+      carregarDados();
+    } catch (error) {
+      console.error("Erro ao cadastrar aulas:", error);
+      alert("Erro ao cadastrar aulas");
+    } finally {
+      setSalvando(false);
     }
-
-    setAulas(prev => [...prev, ...novasAulas]);
-
-    alert(`${quantidadeSemanas * diasSelecionados.length} aulas recorrentes cadastradas com sucesso!`);
-    setAlunoNome("");
-    setData("");
-    setHora("");
-    setReposicao("nao");
-    setDiasSelecionados([]);
-    setQuantidadeSemanas(4);
-    setModoCadastro("manual");
-    setSalvando(false);
   }
 
   // Edicao
@@ -543,44 +527,63 @@ export default function AgendaPage() {
     setEditStatus("pendente");
   }
 
-  function salvarEdicao() {
+  async function salvarEdicao() {
     if (!editandoId) return;
     if (!editAlunoNome) return alert("Selecione um aluno");
     if (!editData) return alert("Informe a data");
     if (!editHora) return alert("Informe a hora");
 
     setSalvandoEdicao(true);
-    const aluno = alunos.find((a) => a.nome === editAlunoNome);
+    
+    try {
+      const aluno = alunos.find((a) => a.nome === editAlunoNome);
+      const valorNumerico = aluno?.valor ? Number(aluno.valor) : 0;
 
-    setAulas(prev => prev.map(aula => 
-      aula.id === editandoId 
-        ? {
-            ...aula,
-            alunoNome: editAlunoNome,
-            alunoId: aluno?.id || "",
-            data: editData,
-            hora: editHora,
-            reposicao: editReposicao,
-            valorAula: aluno?.valorAula || 0,
-            status: editStatus,
-          }
-        : aula
-    ));
+      await updateDoc(doc(db, "agenda", editandoId), {
+        alunoNome: editAlunoNome,
+        alunoId: aluno?.id || "",
+        data: editData,
+        hora: editHora,
+        reposicao: editReposicao,
+        valorAula: valorNumerico,
+        status: editStatus,
+        atualizadoEm: new Date().toISOString(),
+      });
 
-    alert("Aula atualizada com sucesso!");
-    cancelarEdicao();
-    setSalvandoEdicao(false);
+      alert("Aula atualizada com sucesso!");
+      cancelarEdicao();
+      carregarDados();
+    } catch (error) {
+      console.error("Erro ao salvar edicao:", error);
+      alert("Erro ao atualizar aula");
+    } finally {
+      setSalvandoEdicao(false);
+    }
   }
 
-  function atualizarStatusAula(id: string, novoStatus: AulaStatus) {
-    setAulas(prev => prev.map(aula => 
-      aula.id === id ? { ...aula, status: novoStatus } : aula
-    ));
+  async function atualizarStatusAula(id: string, novoStatus: AulaStatus) {
+    try {
+      await updateDoc(doc(db, "agenda", id), {
+        status: novoStatus,
+        atualizadoEm: new Date().toISOString(),
+      });
+      carregarDados();
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+      alert("Erro ao atualizar status");
+    }
   }
 
-  function excluirAula(id: string) {
+  async function excluirAula(id: string) {
     if (!window.confirm("Deseja excluir esta aula?")) return;
-    setAulas(prev => prev.filter(aula => aula.id !== id));
+    
+    try {
+      await deleteDoc(doc(db, "agenda", id));
+      carregarDados();
+    } catch (error) {
+      console.error("Erro ao excluir aula:", error);
+      alert("Erro ao excluir aula");
+    }
   }
 
   // Navegacao semanal
@@ -757,7 +760,7 @@ export default function AgendaPage() {
           </div>
         )}
 
-        {aula.valorAula && (
+        {aula.valorAula && aula.valorAula > 0 && (
           <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "11px", marginBottom: "8px" }}>
             {formatarMoeda(aula.valorAula)}
           </div>
@@ -806,7 +809,7 @@ export default function AgendaPage() {
           </button>
 
           <a
-            href={gerarLinkWhatsApp(aluno?.telefone, aula.alunoNome, aula.data, aula.hora)}
+            href={gerarLinkWhatsAppAula(aluno?.telefone, aula.alunoNome, aula.data, aula.hora)}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -878,8 +881,7 @@ export default function AgendaPage() {
   if (isLoading) {
     return (
       <div style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
+        minHeight: "60vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -908,11 +910,7 @@ export default function AgendaPage() {
   // MAIN RENDER
   // ============================================================================
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
-      padding: isMobile ? "16px" : "24px",
-    }}>
+    <div style={{ padding: isMobile ? "0" : "0" }}>
       <div style={{ maxWidth: "1600px", margin: "0 auto" }}>
         
         {/* Header */}
@@ -934,22 +932,29 @@ export default function AgendaPage() {
               alignItems: "center",
               gap: "12px",
             }}>
-              <span style={{ color: "#3b82f6" }}>Trainer</span>Flow
+              Agenda
             </h1>
             <p style={{ color: "rgba(255,255,255,0.6)", margin: "4px 0 0 0", fontSize: "14px" }}>
-              Agenda Profissional para Personal Trainers
+              Gerencie suas aulas e horarios
             </p>
           </div>
-          <div style={{
-            background: "rgba(59,130,246,0.1)",
-            border: "1px solid rgba(59,130,246,0.2)",
-            borderRadius: "8px",
-            padding: "8px 16px",
-            color: "#93c5fd",
-            fontSize: "12px",
-          }}>
-            Modo Demonstracao
-          </div>
+          <button
+            onClick={carregarDados}
+            style={{
+              background: "rgba(59,130,246,0.1)",
+              border: "1px solid rgba(59,130,246,0.2)",
+              borderRadius: "8px",
+              padding: "8px 16px",
+              color: "#93c5fd",
+              fontSize: "12px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <IconRefresh /> Atualizar
+          </button>
         </div>
 
         {/* Dashboard Cards */}
@@ -1138,7 +1143,7 @@ export default function AgendaPage() {
                 <option value="">Selecione...</option>
                 {alunos.map((aluno) => (
                   <option key={aluno.id} value={aluno.nome} style={{ background: "#1e293b" }}>
-                    {aluno.nome} - {formatarMoeda(aluno.valorAula || 0)}
+                    {aluno.nome} - {formatarMoeda(Number(aluno.valor) || 0)}
                   </option>
                 ))}
               </select>
@@ -1513,7 +1518,7 @@ export default function AgendaPage() {
             gap: "16px",
           }}>
             {/* Navegacao semanal */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
               <button
                 onClick={irSemanaAnterior}
                 style={{
@@ -1539,7 +1544,7 @@ export default function AgendaPage() {
                 color: "#93c5fd",
                 fontSize: "14px",
                 fontWeight: 500,
-                minWidth: "200px",
+                minWidth: isMobile ? "auto" : "200px",
                 textAlign: "center",
               }}>
                 {formatarData(inicioSemanaSelecionada)} - {formatarData(fimSemanaSelecionada)}
@@ -1853,19 +1858,6 @@ export default function AgendaPage() {
             })}
           </div>
         )}
-
-        {/* Footer */}
-        <div style={{
-          marginTop: "40px",
-          textAlign: "center",
-          color: "rgba(255,255,255,0.4)",
-          fontSize: "12px",
-        }}>
-          <p>Trainer Flow - Sistema de Agenda para Personal Trainers</p>
-          <p style={{ marginTop: "4px" }}>
-            Configure as variaveis de ambiente do Firebase para conectar ao banco de dados
-          </p>
-        </div>
       </div>
 
       <style>{`
