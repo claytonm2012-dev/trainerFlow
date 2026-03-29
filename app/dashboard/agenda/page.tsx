@@ -12,15 +12,18 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  Timestamp,
 } from "firebase/firestore";
 
 import db from "../../firebaseDb";
 import auth from "../../firebaseAuth";
 
-// --- DEFINIÇÕES DE TIPOS ---
+// --- TIPAGENS AVANÇADAS ---
 type Aluno = {
   id: string;
-  nome?: string;
+  nome: string;
+  telefone?: string;
+  valorAula?: number;
   userId?: string;
 };
 
@@ -28,12 +31,15 @@ type AulaStatus = "pendente" | "presente" | "faltou" | "cancelado";
 
 type Aula = {
   id: string;
-  alunoNome?: string;
-  data?: string;
-  hora?: string;
-  reposicao?: string;
-  status?: AulaStatus;
-  userId?: string;
+  alunoId?: string;
+  alunoNome: string;
+  data: string;
+  hora: string;
+  reposicao: string;
+  status: AulaStatus;
+  userId: string;
+  valor?: number;
+  criadoEm?: any;
 };
 
 type DiaSemanaItem = {
@@ -41,7 +47,7 @@ type DiaSemanaItem = {
   label: string;
 };
 
-// --- CONSTANTES ---
+// --- CONSTANTES DE DESIGN SYSTEM ---
 const diasSemana: DiaSemanaItem[] = [
   { chave: "segunda", label: "Segunda" },
   { chave: "terca", label: "Terça" },
@@ -54,359 +60,649 @@ const diasSemana: DiaSemanaItem[] = [
 
 const horariosFixos = [
   "05:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00",
-  "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00",
+  "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00"
 ];
 
-const coresAluno = [
-  { fundo: "rgba(34,197,94,0.12)", borda: "rgba(34,197,94,0.20)", texto: "#86efac", glow: "0 0 18px rgba(34,197,94,0.10)" },
-  { fundo: "rgba(59,130,246,0.12)", borda: "rgba(59,130,246,0.20)", texto: "#93c5fd", glow: "0 0 18px rgba(59,130,246,0.10)" },
-  { fundo: "rgba(168,85,247,0.12)", borda: "rgba(168,85,247,0.20)", texto: "#d8b4fe", glow: "0 0 18px rgba(168,85,247,0.10)" },
-  { fundo: "rgba(250,204,21,0.12)", borda: "rgba(250,204,21,0.20)", texto: "#fde68a", glow: "0 0 18px rgba(250,204,21,0.10)" },
-  { fundo: "rgba(236,72,153,0.12)", borda: "rgba(236,72,153,0.20)", texto: "#f9a8d4", glow: "0 0 18px rgba(236,72,153,0.10)" },
-  { fundo: "rgba(14,165,233,0.12)", borda: "rgba(14,165,233,0.20)", texto: "#7dd3fc", glow: "0 0 18px rgba(14,165,233,0.10)" },
+const coresPaleta = [
+  { fundo: "rgba(34,197,94,0.15)", borda: "#22c55e", texto: "#86efac", glow: "0 4px 12px rgba(34,197,94,0.2)" },
+  { fundo: "rgba(59,130,246,0.15)", borda: "#3b82f6", texto: "#93c5fd", glow: "0 4px 12px rgba(59,130,246,0.2)" },
+  { fundo: "rgba(168,85,247,0.15)", borda: "#a855f7", texto: "#d8b4fe", glow: "0 4px 12px rgba(168,85,247,0.2)" },
+  { fundo: "rgba(245,158,11,0.15)", borda: "#f59e0b", texto: "#fcd34d", glow: "0 4px 12px rgba(245,158,11,0.2)" },
+  { fundo: "rgba(236,72,153,0.15)", borda: "#ec4899", texto: "#f9a8d4", glow: "0 4px 12px rgba(236,72,153,0.2)" },
+  { fundo: "rgba(14,165,233,0.15)", borda: "#0ea5e9", texto: "#7dd3fc", glow: "0 4px 12px rgba(14,165,233,0.2)" },
 ];
 
-export default function AgendaPage() {
+export default function AgendaProfissionalPage() {
+  // --- ESTADOS CORE ---
   const [isMobile, setIsMobile] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
-  
+  const [viewMode, setViewMode] = useState<"grade" | "lista">("grade");
+
+  // --- ESTADOS DE DADOS ---
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [aulas, setAulas] = useState<Aula[]>([]);
   
-  const [alunoNome, setAlunoNome] = useState("");
+  // --- FORMULÁRIO ---
+  const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
   const [data, setData] = useState("");
   const [hora, setHora] = useState("");
   const [reposicao, setReposicao] = useState("nao");
-  const [modoCadastro, setModoCadastro] = useState<"manual" | "automatico">("manual");
-  const [diasSelecionados, setDiasSelecionados] = useState<string[]>([]);
-  const [quantidadeSemanas, setQuantidadeSemanas] = useState(4);
+  const [modoCadastro, setModoCadastro] = useState<"unica" | "recorrente">("unica");
+  const [diasRecorrentes, setDiasRecorrentes] = useState<string[]>([]);
+  const [numSemanas, setNumSemanas] = useState(4);
 
-  const [inicioSemanaSelecionada, setInicioSemanaSelecionada] = useState(getInicioDaSemana(new Date()));
-  const [editandoId, setEditandoId] = useState("");
-  const editorRef = useRef<HTMLDivElement | null>(null);
+  // --- FILTROS & NAVEGAÇÃO ---
+  const [termoBusca, setTermoBusca] = useState("");
+  const [dataInicioSemana, setDataInicioSemana] = useState(obterSegundaFeira(new Date()));
+  const [filtroStatus, setFiltroStatus] = useState<string>("todos");
 
-  // Efeito de Responsividade
+  // --- MODAIS ---
+  const [aulaEmEdicao, setAulaEmEdicao] = useState<Aula | null>(null);
+
+  // --- EFEITOS INICIAIS ---
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Carregar Alunos e Agenda
-  const carregarDados = async () => {
+  const fetchDados = async () => {
     try {
       setCarregando(true);
       const user = auth.currentUser;
       if (!user) return;
 
-      // Buscar Coleção de Alunos
-      const snapAlunos = await getDocs(query(collection(db, "students"), where("userId", "==", user.uid)));
-      const listaAlunos = snapAlunos.docs.map(d => ({ id: d.id, ...d.data() })) as Aluno[];
-      setAlunos(listaAlunos);
+      const qAlunos = query(collection(db, "students"), where("userId", "==", user.uid));
+      const qAgenda = query(collection(db, "agenda"), where("userId", "==", user.uid), orderBy("data", "asc"));
 
-      // Buscar Coleção de Agenda
-      const snapAgenda = await getDocs(query(collection(db, "agenda"), where("userId", "==", user.uid), orderBy("data", "desc")));
-      const listaAgenda = snapAgenda.docs.map(d => ({ id: d.id, ...d.data() })) as Aula[];
+      const [resAlunos, resAgenda] = await Promise.all([getDocs(qAlunos), getDocs(qAgenda)]);
+
+      const listaAlunos = resAlunos.docs.map(d => ({ id: d.id, ...d.data() })) as Aluno[];
+      const listaAgenda = resAgenda.docs.map(d => ({ id: d.id, ...d.data() })) as Aula[];
+
+      setAlunos(listaAlunos.sort((a, b) => a.nome.localeCompare(b.nome)));
       setAulas(listaAgenda);
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+    } catch (e) {
+      console.error("Erro ao sincronizar dados:", e);
     } finally {
       setCarregando(false);
     }
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) carregarDados();
-    });
-    return () => unsubscribe();
+    const unsub = auth.onAuthStateChanged(user => { if (user) fetchDados(); });
+    return () => unsub();
   }, []);
 
-  // Cadastro de Aula Única
-  const cadastrarAula = async () => {
-    if (!alunoNome || !data || !hora) return alert("Por favor, selecione o Aluno, a Data e o Horário.");
-    try {
-      setSalvando(true);
-      const user = auth.currentUser;
-      if (!user) return;
-
-      await addDoc(collection(db, "agenda"), {
-        alunoNome,
-        data,
-        hora,
-        reposicao,
-        status: "pendente",
-        userId: user.uid,
-        criadoEm: serverTimestamp()
-      });
-
-      limparFormulario();
-      await carregarDados();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSalvando(false);
+  // --- LÓGICA DE NEGÓCIO: AGENDAMENTO ---
+  const handleAgendar = async () => {
+    if (!alunoSelecionado || !hora || (modoCadastro === "unica" && !data)) {
+      alert("Erro: Preencha aluno, horário e data.");
+      return;
     }
-  };
 
-  // Cadastro de Recorrência Profissional
-  const cadastrarAulasAutomaticas = async () => {
-    if (!alunoNome || !hora || diasSelecionados.length === 0) {
-      return alert("Dados incompletos: Selecione aluno, hora e dias da semana.");
-    }
-    
+    setSalvando(true);
+    const user = auth.currentUser;
+    if (!user) return;
+
     try {
-      setSalvando(true);
-      const user = auth.currentUser;
-      if (!user) return;
-
-      const mapaDias: Record<string, number> = { 
-        domingo: 0, segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6 
-      };
-      
-      for (let s = 0; s < quantidadeSemanas; s++) {
-        for (const diaChave of diasSelecionados) {
-          let dBase = new Date();
-          dBase.setHours(12, 0, 0, 0); // Fixa meio-dia para evitar erro de fuso horário
-          
-          const diaAlvo = mapaDias[diaChave];
-          const diaAtual = dBase.getDay();
-          const diffSemanas = s * 7;
-          const diffDias = (diaAlvo - diaAtual + 7) % 7;
-          
-          dBase.setDate(dBase.getDate() + diffSemanas + diffDias);
-          const dataISO = dBase.toISOString().split("T")[0];
-
-          await addDoc(collection(db, "agenda"), {
-            alunoNome,
-            data: dataISO,
-            hora,
-            reposicao,
-            status: "pendente",
-            userId: user.uid,
-            criadoEm: serverTimestamp()
-          });
+      if (modoCadastro === "unica") {
+        await addDoc(collection(db, "agenda"), {
+          alunoId: alunoSelecionado.id,
+          alunoNome: alunoSelecionado.nome,
+          data,
+          hora,
+          reposicao,
+          status: "pendente",
+          valor: alunoSelecionado.valorAula || 0,
+          userId: user.uid,
+          criadoEm: serverTimestamp(),
+        });
+      } else {
+        // LÓGICA DE RECORRÊNCIA AVANÇADA
+        const mapaDias: Record<string, number> = { segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6, domingo: 0 };
+        for (let i = 0; i < numSemanas; i++) {
+          for (const diaChave of diasRecorrentes) {
+            const d = new Date();
+            d.setHours(12, 0, 0, 0);
+            const alvo = mapaDias[diaChave];
+            const hoje = d.getDay();
+            const diff = (alvo - hoje + 7) % 7;
+            d.setDate(d.getDate() + diff + (i * 7));
+            
+            await addDoc(collection(db, "agenda"), {
+              alunoId: alunoSelecionado.id,
+              alunoNome: alunoSelecionado.nome,
+              data: d.toISOString().split("T")[0],
+              hora,
+              reposicao: "nao",
+              status: "pendente",
+              valor: alunoSelecionado.valorAula || 0,
+              userId: user.uid,
+              criadoEm: serverTimestamp(),
+            });
+          }
         }
       }
-
-      limparFormulario();
-      await carregarDados();
-      alert("Aulas recorrentes geradas com sucesso!");
+      alert("Sucesso: Agenda atualizada!");
+      resetForm();
+      fetchDados();
     } catch (e) {
-      console.error(e);
+      alert("Erro ao gravar no banco.");
     } finally {
       setSalvando(false);
     }
   };
 
-  const limparFormulario = () => {
-    setAlunoNome(""); setData(""); setHora(""); setReposicao("nao"); setDiasSelecionados([]); setModoCadastro("manual");
+  const resetForm = () => {
+    setAlunoSelecionado(null); setData(""); setHora(""); setModoCadastro("unica"); setDiasRecorrentes([]);
   };
 
-  const atualizarStatus = async (id: string, s: AulaStatus) => {
+  const updateStatus = async (id: string, novoStatus: AulaStatus) => {
     try {
-      await updateDoc(doc(db, "agenda", id), { status: s });
-      await carregarDados();
+      await updateDoc(doc(db, "agenda", id), { status: novoStatus });
+      setAulas(prev => prev.map(a => a.id === id ? { ...a, status: novoStatus } : a));
     } catch (e) { console.error(e); }
   };
 
-  const excluirAula = async (id: string) => {
-    if (confirm("Tem certeza que deseja remover este horário da agenda?")) {
-      try {
-        await deleteDoc(doc(db, "agenda", id));
-        await carregarDados();
-      } catch (e) { console.error(e); }
-    }
+  const deletarAula = async (id: string) => {
+    if (!confirm("Confirmar exclusão definitiva?")) return;
+    await deleteDoc(doc(db, "agenda", id));
+    fetchDados();
   };
 
-  const fimSemanaSelecionada = useMemo(() => addDiasEmISO(inicioSemanaSelecionada, 6), [inicioSemanaSelecionada]);
+  // --- CÁLCULOS DE DASHBOARD ---
+  const stats = useMemo(() => {
+    const hoje = new Date().toISOString().split("T")[0];
+    const mesAtual = new Date().getMonth();
+    const aulasMes = aulas.filter(a => new Date(a.data).getMonth() === mesAtual);
 
-  // Mapa da Agenda para Visualização em Colunas
-  const mapaSemanal = useMemo(() => {
-    const estrutura: Record<string, Aula[]> = { segunda: [], terca: [], quarta: [], quinta: [], sexta: [], sabado: [], domingo: [] };
-    aulas.forEach(a => {
-      if (a.data! >= inicioSemanaSelecionada && a.data! <= fimSemanaSelecionada) {
-        const d = getChaveDiaSemana(a.data!);
-        if (estrutura[d]) estrutura[d].push(a);
+    return {
+      totalHoje: aulas.filter(a => a.data === hoje).length,
+      pendentes: aulas.filter(a => a.status === "pendente").length,
+      faturamentoPrevisto: aulasMes.reduce((acc, curr) => acc + (curr.valor || 0), 0),
+      faturamentoRealizado: aulasMes.filter(a => a.status === "presente").reduce((acc, curr) => acc + (curr.valor || 0), 0),
+      taxaPresenca: Math.round((aulasMes.filter(a => a.status === "presente").length / (aulasMes.length || 1)) * 100)
+    };
+  }, [aulas]);
+
+  // --- FILTRAGEM DA GRADE ---
+  const dataFimSemana = useMemo(() => {
+    const d = new Date(dataInicioSemana);
+    d.setDate(d.getDate() + 6);
+    return d.toISOString().split("T")[0];
+  }, [dataInicioSemana]);
+
+  const aulasFiltradas = useMemo(() => {
+    return aulas.filter(a => {
+      const matchBusca = a.alunoNome.toLowerCase().includes(termoBusca.toLowerCase());
+      const matchStatus = filtroStatus === "todos" || a.status === filtroStatus;
+      return matchBusca && matchStatus;
+    });
+  }, [aulas, termoBusca, filtroStatus]);
+
+  const gradeCalculada = useMemo(() => {
+    const mapa: Record<string, Record<string, Aula[]>> = {};
+    diasSemana.forEach(dia => {
+      mapa[dia.chave] = {};
+      horariosFixos.forEach(h => mapa[dia.chave][h] = []);
+    });
+
+    aulasFiltradas.forEach(aula => {
+      if (aula.data >= dataInicioSemana && aula.data <= dataFimSemana) {
+        const diaChave = converterDataParaChave(aula.data);
+        const horaBase = aula.hora.split(":")[0] + ":00";
+        if (mapa[diaChave] && mapa[diaChave][horaBase]) {
+          mapa[diaChave][horaBase].push(aula);
+        }
       }
     });
-    Object.keys(estrutura).forEach(k => estrutura[k].sort((a,b) => a.hora!.localeCompare(b.hora!)));
-    return estrutura;
-  }, [aulas, inicioSemanaSelecionada, fimSemanaSelecionada]);
+    return mapa;
+  }, [aulasFiltradas, dataInicioSemana, dataFimSemana]);
+
+  // --- FUNÇÕES DE INTERFACE ---
+  const shareWhatsApp = (aula: Aula) => {
+    const tel = alunos.find(al => al.id === aula.alunoId)?.telefone || "";
+    const msg = `Olá ${aula.alunoNome}, confirmando nosso treino dia ${formatarDataBr(aula.data)} às ${aula.hora}. Aguardo você!`;
+    window.open(`https://wa.me/55${tel.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`);
+  };
 
   return (
-    <div style={estilos.pagina}>
-      {/* HEADER DE BOAS-VINDAS */}
-      <header style={estilos.hero}>
-        <div style={estilos.heroPrincipal}>
-          <p style={estilos.eyebrow}>TRAINER FLOW - CONSULTORIA ONLINE</p>
-          <h1 style={estilos.titulo}>Agenda de Treinos</h1>
-          <p style={estilos.descricao}>Gestão inteligente de horários, presenças e faturamento.</p>
+    <div style={s.container}>
+      {/* HEADER DINÂMICO */}
+      <header style={s.header}>
+        <div style={s.headerLeft}>
+          <span style={s.badgeLive}>• LIVE</span>
+          <h1 style={s.logo}>TrainerFlow <span style={s.logoPro}>PRO</span></h1>
+        </div>
+        <div style={s.headerRight}>
+          <div style={s.userProfile}>
+            <div style={s.avatar}>{auth.currentUser?.email?.charAt(0).toUpperCase()}</div>
+            {!isMobile && <span>{auth.currentUser?.email}</span>}
+          </div>
         </div>
       </header>
 
-      {/* PAINEL DE CADASTRO */}
-      <section style={estilos.formCard}>
-        <h2 style={estilos.cardTitulo}>Cadastrar Agendamento</h2>
-        <div style={estilos.modoCadastroWrap}>
-          <button style={{...estilos.modoCadastroBotao, ...(modoCadastro === "manual" ? estilos.modoCadastroBotaoAtivo : {})}} onClick={() => setModoCadastro("manual")}>AULA ÚNICA</button>
-          <button style={{...estilos.modoCadastroBotao, ...(modoCadastro === "automatico" ? estilos.modoCadastroBotaoAtivo : {})}} onClick={() => setModoCadastro("automatico")}>RECORRÊNCIA MENSAL</button>
+      {/* DASHBOARD DE PERFORMANCE */}
+      <section style={s.dashboard}>
+        <div style={s.statCard}>
+          <span style={s.statLabel}>Hoje</span>
+          <h2 style={s.statValue}>{stats.totalHoje}</h2>
+          <div style={s.statSub}>Aulas agendadas</div>
         </div>
-
-        {modoCadastro === "automatico" && (
-          <div style={estilos.recorrenciaCard}>
-            <p style={estilos.label}>Selecione os dias da semana do plano:</p>
-            <div style={estilos.diasSemanaCheckboxGrid}>
-              {diasSemana.map(d => (
-                <button key={d.chave} style={{...estilos.diaSemanaChip, ...(diasSelecionados.includes(d.chave) ? estilos.diaSemanaChipAtivo : {})}} 
-                  onClick={() => setDiasSelecionados(prev => prev.includes(d.chave) ? prev.filter(x => x !== d.chave) : [...prev, d.chave])}>
-                  {d.label}
-                </button>
-              ))}
-            </div>
-            <select style={estilos.selectSemanas} value={quantidadeSemanas} onChange={e => setQuantidadeSemanas(Number(e.target.value))}>
-              <option value={4}>Plano Mensal (4 Semanas)</option>
-              <option value={8}>Plano Bimestral (8 Semanas)</option>
-              <option value={12}>Plano Trimestral (12 Semanas)</option>
-            </select>
-          </div>
-        )}
-
-        <div style={estilos.formGrid}>
-          <div style={estilos.campo}><label style={estilos.label}>Aluno</label>
-            <select style={estilos.select} value={alunoNome} onChange={e => setAlunoNome(e.target.value)}>
-              <option value="">-- Selecionar Aluno --</option>
-              {alunos.map(a => <option key={a.id} value={a.nome}>{a.nome}</option>)}
-            </select>
-          </div>
-          <div style={estilos.campo}><label style={estilos.label}>Data</label>
-            <input type="date" style={estilos.input} value={data} onChange={e => setData(e.target.value)} disabled={modoCadastro === "automatico"} />
-          </div>
-          <div style={estilos.campo}><label style={estilos.label}>Horário</label><input type="time" style={estilos.input} value={hora} onChange={e => setHora(e.target.value)} /></div>
-          <div style={estilos.campo}><label style={estilos.label}>Reposição?</label>
-            <select style={estilos.select} value={reposicao} onChange={e => setReposicao(e.target.value)}>
-              <option value="nao">Não</option><option value="sim">Sim</option>
-            </select>
-          </div>
+        <div style={s.statCard}>
+          <span style={s.statLabel}>Faturamento Estimado</span>
+          <h2 style={{ ...s.statValue, color: "#4ade80" }}>R$ {stats.faturamentoPrevisto}</h2>
+          <div style={s.statSub}>Competência atual</div>
         </div>
-        <button style={estilos.botaoPrincipal} onClick={modoCadastro === "manual" ? cadastrarAula : cadastrarAulasAutomaticas}>
-          {salvando ? "PROCESSANDO..." : "SALVAR AGENDAMENTO"}
-        </button>
+        <div style={s.statCard}>
+          <span style={s.statLabel}>Aderência</span>
+          <h2 style={{ ...s.statValue, color: "#3b82f6" }}>{stats.taxaPresenca}%</h2>
+          <div style={s.statSub}>Presenças confirmadas</div>
+        </div>
+        <div style={s.statCard}>
+          <span style={s.statLabel}>Status</span>
+          <h2 style={{ ...s.statValue, color: "#f59e0b" }}>{stats.pendentes}</h2>
+          <div style={s.statSub}>Aguardando checklist</div>
+        </div>
       </section>
 
-      {/* VISUALIZAÇÃO DA AGENDA SEMANAL */}
-      <section style={estilos.quadroSemanalCard}>
-        <div style={estilos.cardHeaderPlanilha}>
-          <h2 style={estilos.cardTitulo}>Grade da Semana</h2>
-          <div style={estilos.acoesSemana}>
-            <button style={estilos.botaoSemanaSecundario} onClick={() => setInicioSemanaSelecionada(prev => addDiasEmISO(prev, -7))}>Anterior</button>
-            <button style={estilos.botaoSemanaAtual} onClick={() => setInicioSemanaSelecionada(getInicioDaSemana(new Date()))}>Atual</button>
-            <button style={estilos.botaoSemanaSecundario} onClick={() => setInicioSemanaSelecionada(prev => addDiasEmISO(prev, 7))}>Próxima</button>
-          </div>
-        </div>
+      <main style={s.mainGrid}>
+        {/* LADO ESQUERDO: CONTROLES E CADASTRO */}
+        <aside style={s.sidebar}>
+          <div style={s.card}>
+            <h3 style={s.cardTitle}>Agendar Treino</h3>
+            
+            <div style={s.tabContainer}>
+              <button 
+                onClick={() => setModoCadastro("unica")} 
+                style={modoCadastro === "unica" ? s.tabActive : s.tab}
+              >Única</button>
+              <button 
+                onClick={() => setModoCadastro("recorrente")} 
+                style={modoCadastro === "recorrente" ? s.tabActive : s.tab}
+              >Mensal</button>
+            </div>
 
-        <div style={isMobile ? estilos.mobileScroll : estilos.desktopGrade}>
-          {diasSemana.map(dia => (
-            <div key={dia.chave} style={estilos.colunaDia}>
-              <div style={estilos.headerDia}>{dia.label}</div>
-              <div style={estilos.listaAulasColuna}>
-                {mapaSemanal[dia.chave].length === 0 ? (
-                  <div style={estilos.vazio}>Horário Livre</div>
-                ) : (
-                  mapaSemanal[dia.chave].map(aula => {
-                    const cor = getCorAluno(aula.alunoNome);
-                    return (
-                      <div key={aula.id} style={{...estilos.cardAula, background: cor.fundo, border: `1px solid ${cor.borda}`}}>
-                        <div style={estilos.cardAulaTopo}>
-                          <span style={estilos.horaBadge}>{aula.hora}</span>
-                          {aula.reposicao === "sim" && <span style={estilos.reposicaoBadge}>R</span>}
+            <div style={s.form}>
+              <div style={s.inputGroup}>
+                <label style={s.label}>Aluno</label>
+                <select 
+                  style={s.select}
+                  value={alunoSelecionado?.id || ""} 
+                  onChange={(e) => setAlunoSelecionado(alunos.find(a => a.id === e.target.value) || null)}
+                >
+                  <option value="">Selecionar aluno...</option>
+                  {alunos.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+                </select>
+              </div>
+
+              {modoCadastro === "unica" ? (
+                <div style={s.inputGroup}>
+                  <label style={s.label}>Data do Treino</label>
+                  <input type="date" style={s.input} value={data} onChange={e => setData(e.target.value)} />
+                </div>
+              ) : (
+                <div style={s.recorrenciaBox}>
+                  <label style={s.label}>Dias da Semana</label>
+                  <div style={s.chipGrid}>
+                    {diasSemana.map(d => (
+                      <button 
+                        key={d.chave}
+                        onClick={() => setDiasRecorrentes(prev => prev.includes(d.chave) ? prev.filter(x => x !== d.chave) : [...prev, d.chave])}
+                        style={diasRecorrentes.includes(d.chave) ? s.chipActive : s.chip}
+                      >{d.label.substring(0,3)}</button>
+                    ))}
+                  </div>
+                  <label style={{...s.label, marginTop: "10px"}}>Duração (Semanas)</label>
+                  <input type="number" style={s.input} value={numSemanas} onChange={e => setNumSemanas(Number(e.target.value))} />
+                </div>
+              )}
+
+              <div style={s.inputGroup}>
+                <label style={s.label}>Horário</label>
+                <select style={s.select} value={hora} onChange={e => setHora(e.target.value)}>
+                  <option value="">--:--</option>
+                  {horariosFixos.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+
+              <button 
+                disabled={salvando} 
+                onClick={handleAgendar} 
+                style={s.btnPrimary}
+              >
+                {salvando ? "Processando..." : "Confirmar Horário"}
+              </button>
+            </div>
+          </div>
+
+          <div style={{...s.card, marginTop: "20px"}}>
+            <h3 style={s.cardTitle}>Busca e Filtros</h3>
+            <input 
+              style={s.input} 
+              placeholder="Filtrar por nome..." 
+              value={termoBusca} 
+              onChange={e => setTermoBusca(e.target.value)} 
+            />
+            <div style={{marginTop: "10px"}}>
+               <label style={s.label}>Status da Aula</label>
+               <select style={s.select} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
+                 <option value="todos">Todos os status</option>
+                 <option value="pendente">Pendentes</option>
+                 <option value="presente">Presenças</option>
+                 <option value="faltou">Faltas</option>
+                 <option value="cancelado">Cancelados</option>
+               </select>
+            </div>
+          </div>
+        </aside>
+
+        {/* LADO DIREITO: GRADE/AGENDA */}
+        <section style={s.content}>
+          <div style={s.contentHeader}>
+            <div style={s.navigation}>
+              <button style={s.btnNav} onClick={() => setDataInicioSemana(prev => moverSemana(prev, -7))}>Anterior</button>
+              <div style={s.currentRange}>
+                {formatarDataBr(dataInicioSemana)} — {formatarDataBr(dataFimSemana)}
+              </div>
+              <button style={s.btnNav} onClick={() => setDataInicioSemana(prev => moverSemana(prev, 7))}>Próxima</button>
+            </div>
+            <div style={s.viewToggle}>
+              <button onClick={() => setViewMode("grade")} style={viewMode === "grade" ? s.toggleBtnActive : s.toggleBtn}>Grade</button>
+              <button onClick={() => setViewMode("lista")} style={viewMode === "lista" ? s.toggleBtnActive : s.toggleBtn}>Lista</button>
+            </div>
+          </div>
+
+          {viewMode === "grade" ? (
+            <div style={s.gradeWrapper}>
+              <div style={s.gradeGrid}>
+                <div style={s.hourCol}>
+                  <div style={s.gridHeaderCell}>Hora</div>
+                  {horariosFixos.map(h => <div key={h} style={s.hourCell}>{h}</div>)}
+                </div>
+                {diasSemana.map(dia => (
+                  <div key={dia.chave} style={s.dayCol}>
+                    <div style={s.gridHeaderCell}>{dia.label}</div>
+                    {horariosFixos.map(horario => {
+                      const aulasNoSlot = gradeCalculada[dia.chave][horario];
+                      return (
+                        <div key={horario} style={s.gridCell}>
+                          {aulasNoSlot.map(aula => {
+                            const cor = getCorPorNome(aula.alunoNome);
+                            return (
+                              <div 
+                                key={aula.id} 
+                                style={{
+                                  ...s.aulaCard, 
+                                  background: cor.fundo, 
+                                  borderLeft: `4px solid ${cor.borda}`,
+                                  opacity: aula.status === "cancelado" ? 0.5 : 1
+                                }}
+                                onClick={() => setAulaEmEdicao(aula)}
+                              >
+                                <div style={s.aulaHeader}>
+                                  <strong style={{color: cor.texto}}>{aula.alunoNome}</strong>
+                                </div>
+                                <div style={s.aulaFooter}>
+                                  <span>{aula.hora}</span>
+                                  {aula.status === "presente" && <span style={s.dotGreen}>●</span>}
+                                  {aula.status === "faltou" && <span style={s.dotRed}>●</span>}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div style={{...estilos.nomeAluno, color: cor.texto}}>{aula.alunoNome}</div>
-                        <div style={estilos.statusRow}>
-                          <button style={estilos.btnStatus} onClick={() => atualizarStatus(aula.id, "presente")} title="Marcar Presença">✔</button>
-                          <button style={estilos.btnStatusFalta} onClick={() => atualizarStatus(aula.id, "faltou")} title="Marcar Falta">✖</button>
-                          <button style={estilos.btnDelete} onClick={() => excluirAula(aula.id)}>Apagar</button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          ) : (
+            <div style={s.listaContainer}>
+               {aulasFiltradas.length === 0 && <div style={s.vazio}>Nenhum registro encontrado.</div>}
+               {aulasFiltradas.slice(0, 50).map(aula => (
+                 <div key={aula.id} style={s.listItem}>
+                    <div style={s.listInfo}>
+                      <strong>{aula.alunoNome}</strong>
+                      <span>{formatarDataBr(aula.data)} às {aula.hora}</span>
+                    </div>
+                    <div style={s.listActions}>
+                      <button onClick={() => updateStatus(aula.id, "presente")} style={s.btnOk}>Presença</button>
+                      <button onClick={() => updateStatus(aula.id, "faltou")} style={s.btnNo}>Falta</button>
+                      <button onClick={() => shareWhatsApp(aula)} style={s.btnWa}>Zap</button>
+                    </div>
+                 </div>
+               ))}
+            </div>
+          )}
+        </section>
+      </main>
+
+      {/* MODAL DE EDIÇÃO AVANÇADA */}
+      {aulaEmEdicao && (
+        <div style={s.overlay}>
+          <div style={s.modal}>
+            <div style={s.modalHeader}>
+              <h3>Gerenciar Treino</h3>
+              <button onClick={() => setAulaEmEdicao(null)} style={s.btnClose}>✕</button>
+            </div>
+            <div style={s.modalBody}>
+              <p>Aluno: <strong>{aulaEmEdicao.alunoNome}</strong></p>
+              <p>Data: {formatarDataBr(aulaEmEdicao.data)} às {aulaEmEdicao.hora}</p>
+              
+              <div style={s.statusGrid}>
+                <button onClick={() => { updateStatus(aulaEmEdicao.id, "presente"); setAulaEmEdicao(null); }} style={s.statusBtn}>Confirmar Presença</button>
+                <button onClick={() => { updateStatus(aulaEmEdicao.id, "faltou"); setAulaEmEdicao(null); }} style={s.statusBtnRed}>Marcar Falta</button>
+                <button onClick={() => { updateStatus(aulaEmEdicao.id, "cancelado"); setAulaEmEdicao(null); }} style={s.statusBtnGrey}>Cancelar Aula</button>
+                <button onClick={() => shareWhatsApp(aulaEmEdicao)} style={s.statusBtnWa}>Enviar Lembrete WhatsApp</button>
+              </div>
+
+              <button 
+                onClick={() => { deletarAula(aulaEmEdicao.id); setAulaEmEdicao(null); }} 
+                style={s.btnDanger}
+              >Excluir Agendamento</button>
+            </div>
+          </div>
         </div>
-      </section>
+      )}
+
+      {/* FOOTER MOBILE FIXO */}
+      {isMobile && (
+        <nav style={s.mobileNav}>
+          <button style={s.navItem} onClick={() => window.location.reload()}>🔄</button>
+          <button style={{...s.navItem, color: "#3b82f6"}} onClick={() => setViewMode("grade")}>📅</button>
+          <button style={s.navItem} onClick={() => setModoCadastro("unica")}>➕</button>
+          <button style={s.navItem}>👤</button>
+        </nav>
+      )}
     </div>
   );
 }
 
-// --- UTILITÁRIOS DE DATA ---
-function getInicioDaSemana(d: Date) {
+// --- UTILITÁRIOS ---
+function obterSegundaFeira(d: Date) {
   const date = new Date(d);
   const dia = date.getDay();
-  const diff = dia === 0 ? -6 : 1 - dia;
-  date.setDate(date.getDate() + diff);
-  return date.toISOString().split("T")[0];
-}
-function addDiasEmISO(iso: string, n: number) {
-  const d = new Date(iso + "T12:00:00");
-  d.setDate(d.getDate() + n);
-  return d.toISOString().split("T")[0];
-}
-function getChaveDiaSemana(iso: string) {
-  const dias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
-  return dias[new Date(iso + "T12:00:00").getDay()];
-}
-function getCorAluno(nome?: string) {
-  if (!nome) return coresAluno[0];
-  let sum = 0; for (let i = 0; i < nome.length; i++) sum += nome.charCodeAt(i);
-  return coresAluno[sum % coresAluno.length];
+  const diff = date.getDate() - dia + (dia === 0 ? -6 : 1);
+  const segunda = new Date(date.setDate(diff));
+  return segunda.toISOString().split("T")[0];
 }
 
-// --- ESTILOS PROFISSIONAIS ---
-const estilos = {
-  pagina: { display: "flex", flexDirection: "column" as const, gap: "20px", padding: "16px", background: "#080c14", minHeight: "100vh", color: "#fff", fontFamily: "system-ui, -apple-system, sans-serif" },
-  hero: { background: "linear-gradient(145deg, #1e293b 0%, #080c14 100%)", borderRadius: "24px", padding: "28px", border: "1px solid #1e293b" },
-  heroPrincipal: { maxWidth: "600px" },
-  eyebrow: { fontSize: "11px", color: "#3b82f6", fontWeight: 800, letterSpacing: "1.2px", marginBottom: "8px" },
-  titulo: { fontSize: "32px", fontWeight: 900, margin: "0 0 10px 0" },
-  descricao: { color: "#64748b", fontSize: "15px", lineHeight: 1.6 },
-  formCard: { background: "#111827", padding: "24px", borderRadius: "24px", border: "1px solid #1f2937" },
-  cardTitulo: { fontSize: "20px", fontWeight: 800, marginBottom: "20px", color: "#f3f4f6" },
-  modoCadastroWrap: { display: "flex", gap: "12px", marginBottom: "20px" },
-  modoCadastroBotao: { flex: 1, padding: "12px", borderRadius: "12px", background: "#1f2937", color: "#9ca3af", border: "none", fontWeight: 700, cursor: "pointer", fontSize: "12px" },
-  modoCadastroBotaoAtivo: { background: "#3b82f6", color: "#fff" },
-  recorrenciaCard: { background: "rgba(59, 130, 246, 0.08)", padding: "16px", borderRadius: "16px", marginBottom: "20px", border: "1px solid #1d4ed8" },
-  diasSemanaCheckboxGrid: { display: "flex", gap: "8px", flexWrap: "wrap" as const, marginBottom: "12px" },
-  diaSemanaChip: { padding: "8px 14px", borderRadius: "10px", background: "#080c14", color: "#94a3b8", border: "1px solid #1f2937", fontSize: "12px", cursor: "pointer" },
-  diaSemanaChipAtivo: { background: "#10b981", color: "#fff", borderColor: "#34d399" },
-  selectSemanas: { width: "100%", background: "#080c14", color: "#fff", padding: "10px", borderRadius: "10px", border: "1px solid #1f2937", outline: "none" },
-  formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" },
-  campo: { display: "flex", flexDirection: "column" as const, gap: "6px" },
-  label: { fontSize: "12px", color: "#9ca3af", fontWeight: 700 },
-  input: { background: "#080c14", border: "1px solid #1f2937", color: "#fff", padding: "12px", borderRadius: "12px", fontSize: "14px", outline: "none" },
-  select: { background: "#080c14", border: "1px solid #1f2937", color: "#fff", padding: "12px", borderRadius: "12px", fontSize: "14px", outline: "none" },
-  botaoPrincipal: { width: "100%", background: "linear-gradient(to bottom, #3b82f6, #2563eb)", padding: "16px", borderRadius: "14px", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: "15px" },
-  quadroSemanalCard: { background: "#111827", padding: "24px", borderRadius: "24px", border: "1px solid #1f2937" },
-  cardHeaderPlanilha: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap" as const, gap: "10px" },
-  acoesSemana: { display: "flex", gap: "8px" },
-  botaoSemanaSecundario: { background: "#1f2937", border: "none", color: "#fff", padding: "8px 12px", borderRadius: "10px", fontSize: "11px", cursor: "pointer" },
-  botaoSemanaAtual: { background: "#3b82f6", border: "none", color: "#fff", padding: "8px 12px", borderRadius: "10px", fontSize: "11px", fontWeight: 800, cursor: "pointer" },
-  desktopGrade: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "10px" },
-  mobileScroll: { display: "flex", overflowX: "auto" as const, gap: "12px", paddingBottom: "10px" },
-  colunaDia: { minWidth: "220px", background: "rgba(255,255,255,0.02)", borderRadius: "18px", padding: "12px" },
-  headerDia: { textAlign: "center" as const, fontWeight: 800, paddingBottom: "12px", borderBottom: "1px solid #1f2937", marginBottom: "12px", color: "#3b82f6", fontSize: "13px" },
-  listaAulasColuna: { display: "flex", flexDirection: "column" as const, gap: "10px" },
-  cardAula: { padding: "14px", borderRadius: "16px" },
-  cardAulaTopo: { display: "flex", justifyContent: "space-between", marginBottom: "8px" },
-  horaBadge: { background: "rgba(0,0,0,0.3)", padding: "4px 8px", borderRadius: "8px", fontSize: "11px", fontWeight: 800 },
-  reposicaoBadge: { background: "#f59e0b", color: "#000", padding: "2px 6px", borderRadius: "6px", fontSize: "10px", fontWeight: 900 },
-  nomeAluno: { fontSize: "15px", fontWeight: 900, marginBottom: "12px" },
-  statusRow: { display: "flex", gap: "6px" },
-  btnStatus: { flex: 1, background: "#10b981", border: "none", color: "#fff", borderRadius: "10px", padding: "8px", cursor: "pointer" },
-  btnStatusFalta: { flex: 1, background: "#ef4444", border: "none", color: "#fff", borderRadius: "10px", padding: "8px", cursor: "pointer" },
-  btnDelete: { background: "#374151", border: "none", color: "#fff", borderRadius: "8px", padding: "8px", fontSize: "10px", cursor: "pointer" },
-  vazio: { textAlign: "center" as const, padding: "20px", color: "#4b5563", fontSize: "12px", fontStyle: "italic" }
+function moverSemana(dataIso: string, dias: number) {
+  const d = new Date(dataIso + "T12:00:00");
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().split("T")[0];
+}
+
+function formatarDataBr(dataIso: string) {
+  if (!dataIso) return "";
+  const [ano, mes, dia] = dataIso.split("-");
+  return `${dia}/${mes}`;
+}
+
+function converterDataParaChave(dataIso: string) {
+  const d = new Date(dataIso + "T12:00:00");
+  const dias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+  return dias[d.getDay()];
+}
+
+function getCorPorNome(nome: string) {
+  let hash = 0;
+  for (let i = 0; i < nome.length; i++) {
+    hash = nome.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % coresPaleta.length;
+  return coresPaleta[index];
+}
+
+// --- DESIGN SYSTEM (CSS-IN-JS) ---
+const s: Record<string, any> = {
+  container: {
+    background: "#0a0a0c",
+    minHeight: "100vh",
+    color: "#e2e8f0",
+    fontFamily: "'Inter', sans-serif",
+    paddingBottom: "80px"
+  },
+  header: {
+    height: "70px",
+    background: "#121216",
+    borderBottom: "1px solid #1f1f23",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "0 24px",
+    position: "sticky",
+    top: 0,
+    zIndex: 100
+  },
+  headerLeft: { display: "flex", alignItems: "center", gap: "12px" },
+  badgeLive: { background: "#ef4444", color: "white", padding: "2px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold" },
+  logo: { fontSize: "20px", fontWeight: "bold", letterSpacing: "-0.5px" },
+  logoPro: { color: "#3b82f6", fontStyle: "italic" },
+  avatar: { width: "32px", height: "32px", borderRadius: "50%", background: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" },
+  userProfile: { display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", color: "#94a3b8" },
+
+  dashboard: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "16px",
+    padding: "24px",
+  },
+  statCard: {
+    background: "#121216",
+    padding: "20px",
+    borderRadius: "16px",
+    border: "1px solid #1f1f23",
+  },
+  statLabel: { color: "#94a3b8", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px" },
+  statValue: { fontSize: "28px", fontWeight: "bold", margin: "8px 0" },
+  statSub: { color: "#475569", fontSize: "11px" },
+
+  mainGrid: {
+    display: "grid",
+    gridTemplateColumns: "350px 1fr",
+    gap: "24px",
+    padding: "0 24px 24px 24px",
+  },
+  sidebar: { display: "flex", flexDirection: "column", gap: "20px" },
+  card: {
+    background: "#121216",
+    borderRadius: "16px",
+    border: "1px solid #1f1f23",
+    padding: "20px"
+  },
+  cardTitle: { fontSize: "16px", fontWeight: "bold", marginBottom: "16px" },
+  tabContainer: {
+    display: "flex",
+    background: "#0a0a0c",
+    padding: "4px",
+    borderRadius: "10px",
+    marginBottom: "16px"
+  },
+  tab: { flex: 1, padding: "8px", border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer", borderRadius: "8px" },
+  tabActive: { flex: 1, padding: "8px", border: "none", background: "#1f1f23", color: "white", borderRadius: "8px", fontWeight: "bold" },
+
+  form: { display: "flex", flexDirection: "column", gap: "12px" },
+  inputGroup: { display: "flex", flexDirection: "column", gap: "6px" },
+  label: { fontSize: "12px", color: "#94a3b8" },
+  input: { background: "#0a0a0c", border: "1px solid #1f1f23", padding: "12px", borderRadius: "10px", color: "white", outline: "none" },
+  select: { background: "#0a0a0c", border: "1px solid #1f1f23", padding: "12px", borderRadius: "10px", color: "white", outline: "none" },
+  btnPrimary: { background: "#3b82f6", color: "white", border: "none", padding: "14px", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", marginTop: "10px" },
+  
+  chipGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" },
+  chip: { background: "#0a0a0c", border: "1px solid #1f1f23", color: "#94a3b8", padding: "8px", borderRadius: "8px", fontSize: "10px", cursor: "pointer" },
+  chipActive: { background: "#3b82f6", border: "1px solid #3b82f6", color: "white", padding: "8px", borderRadius: "8px", fontSize: "10px", cursor: "pointer" },
+
+  content: { background: "#121216", borderRadius: "16px", border: "1px solid #1f1f23", overflow: "hidden", display: "flex", flexDirection: "column" },
+  contentHeader: { padding: "20px", borderBottom: "1px solid #1f1f23", display: "flex", justifyContent: "space-between", alignItems: "center" },
+  navigation: { display: "flex", alignItems: "center", gap: "16px" },
+  btnNav: { background: "#1f1f23", border: "none", color: "white", padding: "8px 16px", borderRadius: "8px", cursor: "pointer" },
+  currentRange: { fontWeight: "bold", fontSize: "14px" },
+  viewToggle: { display: "flex", background: "#0a0a0c", padding: "4px", borderRadius: "8px" },
+  toggleBtn: { padding: "6px 12px", border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer", fontSize: "12px" },
+  toggleBtnActive: { padding: "6px 12px", border: "none", background: "#1f1f23", color: "white", borderRadius: "6px", fontSize: "12px" },
+
+  gradeWrapper: { flex: 1, overflowX: "auto" },
+  gradeGrid: {
+    display: "grid",
+    gridTemplateColumns: "60px repeat(7, 1fr)",
+    minWidth: "1000px"
+  },
+  hourCol: { borderRight: "1px solid #1f1f23" },
+  dayCol: { borderRight: "1px solid #1f1f23", minHeight: "800px" },
+  gridHeaderCell: { height: "50px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold", borderBottom: "1px solid #1f1f23", color: "#94a3b8" },
+  hourCell: { height: "100px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", color: "#475569", borderBottom: "1px solid #1f1f23" },
+  gridCell: { height: "100px", borderBottom: "1px solid #0f0f12", padding: "4px", position: "relative" },
+
+  aulaCard: {
+    padding: "8px",
+    borderRadius: "8px",
+    fontSize: "11px",
+    cursor: "pointer",
+    marginBottom: "4px",
+    transition: "transform 0.2s",
+    ":hover": { transform: "scale(1.02)" }
+  },
+  aulaHeader: { fontWeight: "bold", marginBottom: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  aulaFooter: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "9px", opacity: 0.8 },
+  dotGreen: { color: "#22c55e" },
+  dotRed: { color: "#ef4444" },
+
+  overlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" },
+  modal: { background: "#121216", width: "90%", maxWidth: "400px", borderRadius: "20px", border: "1px solid #1f1f23", padding: "24px" },
+  modalHeader: { display: "flex", justifyContent: "space-between", marginBottom: "20px" },
+  btnClose: { background: "transparent", border: "none", color: "white", fontSize: "20px", cursor: "pointer" },
+  statusGrid: { display: "grid", gap: "10px", margin: "20px 0" },
+  statusBtn: { background: "#22c55e", color: "white", border: "none", padding: "12px", borderRadius: "10px", fontWeight: "bold", cursor: "pointer" },
+  statusBtnRed: { background: "#ef4444", color: "white", border: "none", padding: "12px", borderRadius: "10px", fontWeight: "bold", cursor: "pointer" },
+  statusBtnGrey: { background: "#334155", color: "white", border: "none", padding: "12px", borderRadius: "10px", fontWeight: "bold", cursor: "pointer" },
+  statusBtnWa: { background: "#25d366", color: "white", border: "none", padding: "12px", borderRadius: "10px", fontWeight: "bold", cursor: "pointer" },
+  btnDanger: { width: "100%", background: "transparent", color: "#ef4444", border: "1px solid #ef4444", padding: "10px", borderRadius: "10px", cursor: "pointer", marginTop: "10px" },
+
+  mobileNav: {
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: "70px",
+    background: "#121216",
+    borderTop: "1px solid #1f1f23",
+    display: "flex",
+    justifyContent: "space-around",
+    alignItems: "center",
+    zIndex: 1000
+  },
+  navItem: { background: "none", border: "none", fontSize: "24px", color: "#94a3b8" },
+
+  listItem: { padding: "16px", borderBottom: "1px solid #1f1f23", display: "flex", justifyContent: "space-between", alignItems: "center" },
+  listInfo: { display: "flex", flexDirection: "column", gap: "4px" },
+  listActions: { display: "flex", gap: "8px" },
+  btnOk: { background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e", padding: "6px 12px", borderRadius: "6px", fontSize: "12px" },
+  btnNo: { background: "#ef444422", color: "#ef4444", border: "1px solid #ef4444", padding: "6px 12px", borderRadius: "6px", fontSize: "12px" },
+  btnWa: { background: "#25d36622", color: "#25d366", border: "1px solid #25d366", padding: "6px 12px", borderRadius: "6px", fontSize: "12px" },
 };
