@@ -127,19 +127,18 @@ export default function AgendaPage() {
         getDocs(query(collection(db, "students"), where("userId", "==", user.uid))),
         getDocs(query(collection(db, "agenda"), where("userId", "==", user.uid), orderBy("data", "desc")))
       ]);
-
-      const alunosLista = alunosSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Aluno[];
-      const aulasLista = agendaSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Aula[];
-
+      const alunosLista = alunosSnapshot.docs.map(docItem => ({ id: docItem.id, ...docItem.data() })) as Aluno[];
+      const aulasLista = agendaSnapshot.docs.map(docItem => ({ id: docItem.id, ...docItem.data() })) as Aula[];
+      
       const hojeISO = new Date().toISOString().split("T")[0];
       const inicioSemanaAtual = getInicioDaSemana(new Date());
       const fimSemanaAtual = getFimDaSemanaPorInicio(inicioSemanaAtual);
-      const mesAt = new Date().getMonth() + 1;
-      const anoAt = new Date().getFullYear();
-
-      const aulasDoMes = aulasLista.filter(a => {
-        if (!a.data) return false;
-        const [ano, mes] = a.data.split("-").map(Number);
+      const hoje = new Date();
+      const mesAt = hoje.getMonth() + 1;
+      const anoAt = hoje.getFullYear();
+      const aulasDoMesActual = aulasLista.filter(aula => {
+        if (!aula.data) return false;
+        const [ano, mes] = aula.data.split("-").map(Number);
         return mes === mesAt && ano === anoAt;
       });
 
@@ -147,45 +146,41 @@ export default function AgendaPage() {
       setAulas(aulasLista);
       setAulasHoje(aulasLista.filter(a => a.data === hojeISO).length);
       setAulasSemana(aulasLista.filter(a => a.data! >= inicioSemanaAtual && a.data! <= fimSemanaAtual).length);
-      setAulasMes(aulasDoMes.length);
-      setPresencasMes(aulasDoMes.filter(a => a.status === "presente").length);
-      setFaltasMes(aulasDoMes.filter(a => a.status === "faltou").length);
-      setCanceladasMes(aulasDoMes.filter(a => a.status === "cancelado").length);
-      setReposicoesMes(aulasDoMes.filter(a => a.reposicao === "sim").length);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setCarregando(false);
-    }
+      setAulasMes(aulasDoMesActual.length);
+      setPresencasMes(aulasDoMesActual.filter(a => a.status === "presente").length);
+      setFaltasMes(aulasDoMesActual.filter(a => a.status === "faltou").length);
+      setCanceladasMes(aulasDoMesActual.filter(a => a.status === "cancelado").length);
+      setReposicoesMes(aulasDoMesActual.filter(a => a.reposicao === "sim").length);
+    } catch (error) { console.error(error);
+    } finally { setCarregando(false); }
   }
 
   useEffect(() => { carregarDados(); }, []);
 
   async function cadastrarAula() {
-    if (!alunoNome || !data || !hora) return alert("Preencha todos os campos");
+    if (!alunoNome || !data || !hora) return alert("Selecione todos os campos.");
     try {
       setSalvando(true);
       const user = auth.currentUser;
-      if (!user) return;
+      if (!user) return alert("Usuário não autenticado.");
       await addDoc(collection(db, "agenda"), {
         alunoNome, data, hora, reposicao, status: "pendente", userId: user.uid, criadoEm: serverTimestamp()
       });
-      setAlunoNome(""); setData(""); setHora("");
+      alert("Aula cadastrada!"); setAlunoNome(""); setData(""); setHora("");
       await carregarDados();
     } catch (e) { console.error(e); } finally { setSalvando(false); }
   }
 
   async function cadastrarAulasAutomaticas() {
-    if (!alunoNome || !hora || diasSelecionados.length === 0) return alert("Faltam dados");
+    if (!alunoNome || !hora || diasSelecionados.length === 0) return alert("Faltam dados obrigatórios.");
     try {
       setSalvando(true);
       const user = auth.currentUser;
-      if (!user) return;
+      if (!user) return alert("Usuário não autenticado.");
       const mapaDias: Record<string, number> = { domingo: 0, segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6 };
       for (let s = 0; s < quantidadeSemanas; s++) {
         for (const dia of diasSelecionados) {
-          let dBase = new Date();
-          dBase.setHours(12, 0, 0, 0);
+          let dBase = new Date(); dBase.setHours(12, 0, 0, 0); // Evita erros fuso
           const diff = (mapaDias[dia] - dBase.getDay() + 7) % 7;
           dBase.setDate(dBase.getDate() + (s * 7) + diff);
           await addDoc(collection(db, "agenda"), {
@@ -193,6 +188,7 @@ export default function AgendaPage() {
           });
         }
       }
+      alert("Aulas recorrentes cadastradas!"); setAlunoNome(""); setHora("");
       setModoCadastro("manual"); setDiasSelecionados([]);
       await carregarDados();
     } catch (e) { console.error(e); } finally { setSalvando(false); }
@@ -201,7 +197,7 @@ export default function AgendaPage() {
   function abrirEdicao(aula: Aula) {
     setEditandoId(aula.id); setEditAlunoNome(aula.alunoNome || ""); setEditData(aula.data || "");
     setEditHora(aula.hora || ""); setEditReposicao(aula.reposicao || "nao"); setEditStatus(aula.status || "pendente");
-    setTimeout(() => editorRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    setTimeout(() => editorRef.current?.scrollIntoView({ behavior: "smooth" }), 120);
   }
 
   async function salvarEdicao() {
@@ -211,19 +207,19 @@ export default function AgendaPage() {
       await updateDoc(doc(db, "agenda", editandoId), {
         alunoNome: editAlunoNome, data: editData, hora: editHora, reposicao: editReposicao, status: editStatus
       });
-      setEditandoId(""); await carregarDados();
+      alert("Aula atualizada!"); setEditandoId(""); await carregarDados();
     } catch (e) { console.error(e); } finally { setSalvandoEdicao(false); }
   }
 
   async function atualizarStatusAula(id: string, novoStatus: AulaStatus) {
-    await updateDoc(doc(db, "agenda", id), { status: novoStatus });
-    await carregarDados();
+    try { await updateDoc(doc(db, "agenda", id), { status: novoStatus }); await carregarDados();
+    } catch (e) { console.error(e); }
   }
 
   async function excluirAula(id: string) {
-    if (window.confirm("Excluir aula?")) {
-      await deleteDoc(doc(db, "agenda", id));
-      await carregarDados();
+    if (window.confirm("Excluir esta aula permanentemente?")) {
+      try { await deleteDoc(doc(db, "agenda", id)); await carregarDados();
+      } catch (e) { console.error(e); }
     }
   }
 
@@ -245,38 +241,23 @@ export default function AgendaPage() {
   const mapaSemanal = useMemo(() => {
     const est: Record<string, Aula[]> = { segunda: [], terca: [], quarta: [], quinta: [], sexta: [], sabado: [], domingo: [] };
     aulasDaSemanaSelecionada.forEach(a => { const c = getChaveDiaSemana(a.data!); if (est[c]) est[c].push(a); });
+    Object.keys(est).forEach(c => est[c].sort((a, b) => a.hora!.localeCompare(b.hora!)));
     return est;
   }, [aulasDaSemanaSelecionada]);
 
   const gradeSemanal = useMemo(() => {
-    const g: Record<string, Record<string, Aula[]>> = {};
-    diasSemana.forEach(d => { g[d.chave] = {}; horariosFixos.forEach(h => g[d.chave][h] = []); });
+    const grade: Record<string, Record<string, Aula[]>> = {};
+    diasSemana.forEach(d => { grade[d.chave] = {}; horariosFixos.forEach(h => grade[d.chave][h] = []); });
     aulasDaSemanaSelecionada.forEach(a => {
-      const cD = getChaveDiaSemana(a.data!); const hB = normalizarHoraParaGrade(a.hora);
-      if (g[cD]?.[hB]) g[cD][hB].push(a);
+      const chaveDia = getChaveDiaSemana(a.data!); const horaBase = normalizarHoraParaGrade(a.hora);
+      if (grade[chaveDia]?.[horaBase]) grade[chaveDia][horaBase].push(a);
     });
-    return g;
+    return grade;
   }, [aulasDaSemanaSelecionada]);
 
-  const resumoMensalPorAluno = useMemo(() => {
-    const mapa: Record<string, ResumoAlunoMes> = {};
-    const mesAt = new Date().getMonth() + 1;
-    aulasFiltradasBase.forEach(a => {
-      const [ano, mes] = a.data!.split("-").map(Number);
-      if (mes !== mesAt) return;
-      if (!mapa[a.alunoNome!]) mapa[a.alunoNome!] = { alunoNome: a.alunoNome!, total: 0, presencas: 0, faltas: 0, canceladas: 0, reposicoes: 0 };
-      const r = mapa[a.alunoNome!]; r.total++;
-      if (a.status === "presente") r.presencas++;
-      if (a.status === "faltou") r.faltas++;
-      if (a.status === "cancelado") r.canceladas++;
-      if (a.reposicao === "sim") r.reposicoes++;
-    });
-    return Object.values(mapa);
-  }, [aulasFiltradasBase]);
-
   const percentualPresencaMes = useMemo(() => {
-    const total = presencasMes + faltasMes + canceladasMes;
-    return total ? Math.round((presencasMes / total) * 100) : 0;
+    const base = presencasMes + faltasMes + canceladasMes;
+    return base === 0 ? 0 : Math.round((presencasMes / base) * 100);
   }, [presencasMes, faltasMes, canceladasMes]);
 
   return (
@@ -285,7 +266,7 @@ export default function AgendaPage() {
         <div style={heroPrincipal}>
           <p style={eyebrow}>Agenda e controle de aulas</p>
           <h1 style={titulo}>Agenda</h1>
-          <p style={descricao}>Organize seus atendimentos e acompanhe métricas profissionais.</p>
+          <p style={descricao}>Visualize e organize seus atendimentos de forma profissional.</p>
         </div>
         <div style={heroResumoGrid}>
           <div style={heroResumo}><p style={heroResumoRotulo}>Hoje</p><h2 style={heroResumoValorAzul}>{aulasHoje}</h2></div>
@@ -296,23 +277,23 @@ export default function AgendaPage() {
 
       <section style={blocoPrincipal}>
         <div style={buscaCard}>
-          <div style={buscaHeader}><h2 style={cardTitulo}>Filtros</h2></div>
+          <div style={buscaHeader}><div><p style={cardMini}>Filtros Avançados</p><h2 style={cardTitulo}>Filtrar Agenda</h2></div></div>
           <div style={buscaLinha}>
             <input style={inputBusca} placeholder="Nome do aluno" value={buscaAluno} onChange={e => setBuscaAluno(e.target.value)} />
-            <button style={botaoAplicarBusca} onClick={() => setFiltroAluno(buscaAluno)}>Filtrar</button>
+            <button style={botaoAplicarBusca} onClick={() => setFiltroAluno(buscaAluno)}>Filtrar Aluno</button>
           </div>
           <div style={filtrosRapidos}>
             {["todos", "hoje", "pendente", "presente", "faltou", "cancelado", "reposicao"].map(f => (
-              <button key={f} style={{...botaoFiltroRapido, ...(filtroStatus === f ? botaoFiltroRapidoAtivo : {})}} onClick={() => setFiltroStatus(f as any)}>{f}</button>
+              <button key={f} style={{...botaoFiltroRapido, ...(filtroStatus === f ? botaoFiltroRapidoAtivo : {})}} onClick={() => setFiltroStatus(f as any)}>{primeiraMaiuscula(f)}</button>
             ))}
           </div>
         </div>
 
         <div style={formCard}>
-          <h2 style={cardTitulo}>Cadastrar Aula</h2>
+          <div style={cardHeader}><p style={cardMini}>Novo Registro</p><h2 style={cardTitulo}>Cadastrar Aula</h2></div>
           <div style={modoCadastroWrap}>
-            <button style={{...modoCadastroBotao, ...(modoCadastro === "manual" ? modoCadastroBotaoAtivo : {})}} onClick={() => setModoCadastro("manual")}>Única</button>
-            <button style={{...modoCadastroBotao, ...(modoCadastro === "automatico" ? modoCadastroBotaoAtivo : {})}} onClick={() => setModoCadastro("automatico")}>Recorrência</button>
+            <button style={{...modoCadastroBotao, ...(modoCadastro === "manual" ? modoCadastroBotaoAtivo : {})}} onClick={() => setModoCadastro("manual")}>Aula única</button>
+            <button style={{...modoCadastroBotao, ...(modoCadastro === "automatico" ? modoCadastroBotaoAtivo : {})}} onClick={() => setModoCadastro("automatico")}>Recorrência mensal</button>
           </div>
           {modoCadastro === "automatico" && (
             <div style={recorrenciaCard}>
@@ -320,8 +301,8 @@ export default function AgendaPage() {
                 {[4, 5, 6, 8].map(n => <option key={n} value={n}>{n} semanas</option>)}
               </select>
               <div style={diasSemanaCheckboxGrid}>
-                {diasSemana.map(d => (
-                  <button key={d.chave} style={{...diaSemanaChip, ...(diasSelecionados.includes(d.chave) ? diaSemanaChipAtivo : {})}} onClick={() => setDiasSelecionados(prev => prev.includes(d.chave) ? prev.filter(x => x !== d.chave) : [...prev, d.chave])}>{d.label}</button>
+                {diasSemana.map(dia => (
+                  <button key={dia.chave} style={{...diaSemanaChip, ...(diasSelecionados.includes(dia.chave) ? diaSemanaChipAtivo : {})}} onClick={() => setDiasSelecionados(prev => prev.includes(dia.chave) ? prev.filter(item => item !== dia.chave) : [...prev, dia.chave])}>{dia.label}</button>
                 ))}
               </div>
             </div>
@@ -329,46 +310,44 @@ export default function AgendaPage() {
           <div style={formGrid}>
             <div style={campo}><label style={label}>Aluno</label>
               <select style={select} value={alunoNome} onChange={e => setAlunoNome(e.target.value)}>
-                <option value="">Selecione</option>
+                <option value="">Selecione um aluno</option>
                 {alunos.map(a => <option key={a.id} value={a.nome}>{a.nome}</option>)}
               </select>
             </div>
             <div style={campo}><label style={label}>Data</label><input type="date" style={input} value={data} onChange={e => setData(e.target.value)} disabled={modoCadastro === "automatico"} /></div>
             <div style={campo}><label style={label}>Hora</label><input type="time" style={input} value={hora} onChange={e => setHora(e.target.value)} /></div>
-            <div style={campo}><label style={label}>Reposição?</label><select style={select} value={reposicao} onChange={e => setReposicao(e.target.value)}><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+            <div style={campo}><label style={label}>Foi reposição?</label><select style={select} value={reposicao} onChange={e => setReposicao(e.target.value)}><option value="nao">Não</option><option value="sim">Sim</option></select></div>
           </div>
-          <button style={botaoPrincipal} onClick={modoCadastro === "manual" ? cadastrarAula : cadastrarAulasAutomaticas}>{salvando ? "Salvando..." : "Salvar"}</button>
+          <button style={botaoPrincipal} onClick={modoCadastro === "manual" ? cadastrarAula : cadastrarAulasAutomaticas}>{salvando ? "Salvando..." : "Cadastrar Aula"}</button>
         </div>
 
         {/* PLANILHA SEMANAL */}
         <div style={quadroSemanalCard}>
           <div style={cardHeaderPlanilha}>
-            <h2 style={cardTitulo}>Grade de Horários</h2>
+            <div><p style={cardMini}>Visão Semanal</p><h2 style={cardTitulo}>Grade de Horários</h2></div>
             <div style={acoesSemana}>
-              <button style={botaoSemanaSecundario} onClick={() => setInicioSemanaSelecionada(prev => addDiasEmISO(prev, -7))}>Anterior</button>
-              <button style={botaoSemanaAtual} onClick={() => setInicioSemanaSelecionada(getInicioDaSemana(new Date()))}>Atual</button>
-              <button style={botaoSemanaSecundario} onClick={() => setInicioSemanaSelecionada(prev => addDiasEmISO(prev, 7))}>Próxima</button>
+              <button style={botaoSemanaSecundario} onClick={() => setInicioSemanaSelecionada(prev => addDiasEmISO(prev, -7))}>Semana anterior</button>
+              <button style={botaoSemanaAtual} onClick={() => setInicioSemanaSelecionada(getInicioDaSemana(new Date()))}>Semana atual</button>
+              <button style={botaoSemanaSecundario} onClick={() => setInicioSemanaSelecionada(prev => addDiasEmISO(prev, 7))}>Próxima semana</button>
             </div>
           </div>
+          <p style={periodoValor}>{formatarData(inicioSemanaSelecionada)} até {formatarData(fimSemanaSelecionada)}</p>
           
           {isMobile ? (
             <div style={carrosselDias}>
               {diasSemana.map(dia => (
                 <div key={dia.chave} style={cardDiaMobile}>
                   <h3 style={cardDiaTituloMobile}>{dia.label}</h3>
-                  {mapaSemanal[dia.chave].map(aula => {
-                    const cor = getCorAluno(aula.alunoNome);
-                    return (
-                      <div key={aula.id} style={{...blocoAulaMobile, background: cor.fundo, border: `1px solid ${cor.borda}`}}>
-                        <div style={blocoAluno}>{aula.hora} - {aula.alunoNome}</div>
-                        <div style={blocoAcoesStatus}>
-                          <button style={botaoPresente} onClick={() => atualizarStatusAula(aula.id, "presente")}>✔</button>
-                          <button style={botaoFalta} onClick={() => atualizarStatusAula(aula.id, "faltou")}>✖</button>
-                          <button style={botaoMiniEditar} onClick={() => abrirEdicao(aula)}>Edit</button>
-                        </div>
+                  {mapaSemanal[dia.chave].map(aula => (
+                    <div key={aula.id} style={{...blocoAulaMobile, background: getCorAluno(aula.alunoNome).fundo, border: `1px solid ${getCorAluno(aula.alunoNome).borda}`}}>
+                      <div style={blocoAluno}>{aula.hora} - {aula.alunoNome}</div>
+                      <div style={blocoAcoesStatus}>
+                        <button style={botaoPresente} onClick={() => atualizarStatusAula(aula.id, "presente")}>✔</button>
+                        <button style={botaoFalta} onClick={() => atualizarStatusAula(aula.id, "faltou")}>✖</button>
+                        <button style={botaoMiniEditar} onClick={() => abrirEdicao(aula)}>Edit</button>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -397,9 +376,9 @@ export default function AgendaPage() {
           )}
         </div>
 
-        {/* LISTA DE AULAS */}
+        {/* LISTA COMPLETA */}
         <div style={listaCard}>
-          <h2 style={cardTitulo}>Aulas Registradas</h2>
+          <h2 style={cardTitulo}>Aulas Cadastradas</h2>
           <div style={lista}>
             {aulasFiltradasBase.map(aula => (
               <div key={aula.id} style={itemAula}>
@@ -418,7 +397,7 @@ export default function AgendaPage() {
         </div>
       </section>
 
-      {/* MODAL DE EDIÇÃO */}
+      {/* EDITOR */}
       {editandoId && (
         <div ref={editorRef} style={editorCard}>
           <h2 style={cardTitulo}>Editar Aula</h2>
@@ -437,26 +416,23 @@ export default function AgendaPage() {
   );
 }
 
-// FUNÇÕES DE UTILIDADE
+// UTILITÁRIOS
 function getInicioDaSemana(data: Date) {
-  const d = new Date(data);
-  const dia = d.getDay();
+  const d = new Date(data); const dia = d.getDay();
   const diff = dia === 0 ? -6 : 1 - dia;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split("T")[0];
+  d.setDate(d.getDate() + diff); return d.toISOString().split("T")[0];
 }
 function getFimDaSemanaPorInicio(inicio: string) { return addDiasEmISO(inicio, 6); }
 function addDiasEmISO(iso: string, dias: number) {
-  const d = new Date(iso + "T12:00:00");
-  d.setDate(d.getDate() + dias);
-  return d.toISOString().split("T")[0];
+  const data = new Date(iso + "T12:00:00");
+  data.setDate(data.getDate() + dias); return data.toISOString().split("T")[0];
 }
 function getChaveDiaSemana(iso: string) {
   const dias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
   return dias[new Date(iso + "T12:00:00").getDay()];
 }
-function formatarData(iso?: string) { if(!iso) return ""; const [a,m,d] = iso.split("-"); return `${d}/${m}/${a}`; }
-function normalizarHoraParaGrade(h?: string) { return h ? h.split(":")[0].padStart(2, "0") + ":00" : ""; }
+function formatarData(iso?: string) { if (!iso) return ""; const [ano, mes, dia] = iso.split("-"); return `${dia}/${mes}/${ano}`; }
+function normalizarHoraParaGrade(hora?: string) { return hora ? hora.split(":")[0].padStart(2, "0") + ":00" : ""; }
 function getCorAluno(nome?: string) {
   if (!nome) return coresAluno[0];
   let s = 0; for (let i = 0; i < nome.length; i++) s += nome.charCodeAt(i);
@@ -485,22 +461,7 @@ const botaoAplicarBusca = { padding: "0 20px", borderRadius: "12px", background:
 const filtrosRapidos = { display: "flex", gap: "8px", flexWrap: "wrap" as const };
 const botaoFiltroRapido = { padding: "8px 15px", borderRadius: "20px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none", fontSize: "12px", cursor: "pointer" };
 const botaoFiltroRapidoAtivo = { background: "#22c55e" };
-const formCard = { padding: "30px", background: "rgba(255,255,255,0.05)", borderRadius: "30px" };
 const cardTitulo = { fontSize: "24px", fontWeight: 800, marginBottom: "20px" };
-const modoCadastroWrap = { display: "flex", gap: "10px", marginBottom: "20px" };
-const modoCadastroBotao = { padding: "10px 20px", borderRadius: "20px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none", cursor: "pointer" };
-const modoCadastroBotaoAtivo = { background: "#3b82f6" };
-const recorrenciaCard = { padding: "20px", background: "rgba(255,255,255,0.03)", borderRadius: "20px", marginBottom: "20px" };
-const selectSemanas = { width: "100%", height: "45px", borderRadius: "10px", background: "#1e293b", color: "#fff", marginBottom: "15px" };
-const diasSemanaCheckboxGrid = { display: "flex", gap: "8px", flexWrap: "wrap" as const };
-const diaSemanaChip = { padding: "8px 12px", borderRadius: "15px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none", fontSize: "12px" };
-const diaSemanaChipAtivo = { background: "#22c55e" };
-const formGrid = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" };
-const campo = { display: "flex", flexDirection: "column" as const, gap: "5px" };
-const label = { fontSize: "14px", fontWeight: 600 };
-const input = { height: "50px", borderRadius: "12px", padding: "0 15px", background: "#1e293b", border: "1px solid #334155", color: "#fff" };
-const select = { height: "50px", borderRadius: "12px", padding: "0 15px", background: "#1e293b", border: "1px solid #334155", color: "#fff" };
-const botaoPrincipal = { width: "100%", height: "55px", borderRadius: "15px", background: "#22c55e", color: "#fff", border: "none", fontWeight: 800, fontSize: "16px", cursor: "pointer" };
 const quadroSemanalCard = { padding: "30px", background: "rgba(255,255,255,0.05)", borderRadius: "30px" };
 const cardHeaderPlanilha = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" };
 const acoesSemana = { display: "flex", gap: "10px" };
@@ -524,14 +485,31 @@ const botaoPresente = { flex: 1, padding: "8px", borderRadius: "10px", backgroun
 const botaoFalta = { flex: 1, padding: "8px", borderRadius: "10px", background: "#ef4444", color: "#fff", border: "none" };
 const botaoMiniEditar = { padding: "5px 10px", borderRadius: "8px", background: "#3b82f6", color: "#fff", border: "none" };
 const botaoMiniExcluir = { padding: "5px 10px", borderRadius: "8px", background: "#ef4444", color: "#fff", border: "none" };
+const cardMini = { margin: 0, color: "rgba(255,255,255,0.56)", fontSize: "13px", textTransform: "uppercase" as const, letterSpacing: "0.8px" };
+const cardHeader = { position: "relative" as const, zIndex: 1, marginBottom: "22px" };
+const formCard = { padding: "30px", background: "rgba(255,255,255,0.05)", borderRadius: "30px" };
+const modoCadastroWrap = { display: "flex", gap: "10px", marginBottom: "20px" };
+const modoCadastroBotao = { padding: "10px 20px", borderRadius: "20px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none", cursor: "pointer" };
+const modoCadastroBotaoAtivo = { background: "#3b82f6" };
+const recorrenciaCard = { padding: "20px", background: "rgba(255,255,255,0.03)", borderRadius: "20px", marginBottom: "20px" };
+const selectSemanas = { width: "100%", height: "45px", borderRadius: "10px", background: "#1e293b", color: "#fff", marginBottom: "15px" };
+const diasSemanaCheckboxGrid = { display: "flex", gap: "8px", flexWrap: "wrap" as const };
+const diaSemanaChip = { padding: "8px 12px", borderRadius: "15px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none", fontSize: "12px" };
+const diaSemanaChipAtivo = { background: "#22c55e" };
+const formGrid = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" };
+const campo = { display: "flex", flexDirection: "column" as const, gap: "5px" };
+const label = { fontSize: "14px", fontWeight: 600 };
+const input = { height: "50px", borderRadius: "12px", padding: "0 15px", background: "#1e293b", border: "1px solid #334155", color: "#fff" };
+const select = { height: "50px", borderRadius: "12px", padding: "0 15px", background: "#1e293b", border: "1px solid #334155", color: "#fff" };
+const botaoPrincipal = { width: "100%", height: "55px", borderRadius: "15px", background: "#22c55e", color: "#fff", border: "none", fontWeight: 800, fontSize: "16px", cursor: "pointer" };
+const periodoValor = { color: "#ffffff", fontSize: "17px", fontWeight: 800, textAlign: 'center' as const, marginBottom: '15px' };
 const listaCard = { padding: "30px", background: "rgba(255,255,255,0.05)", borderRadius: "30px" };
 const lista = { display: "flex", flexDirection: "column" as const, gap: "15px" };
 const itemAula = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px", background: "rgba(255,255,255,0.03)", borderRadius: "20px" };
-const itemNome = { fontSize: "18px", fontWeight: 700 };
+const itemNome = { fontSize: "18px", fontWeight: 700, color: '#fff' };
 const itemData = { fontSize: "14px", color: "rgba(255,255,255,0.6)" };
 const itemListaAcoes = { display: "flex", gap: "10px" };
 const editorCard = { position: "fixed" as const, top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "90%", maxWidth: "500px", padding: "30px", background: "#1e293b", borderRadius: "30px", boxShadow: "0 0 50px rgba(0,0,0,0.5)", zIndex: 1000 };
 const acoesEdicao = { display: "flex", gap: "10px", marginTop: "20px" };
 const botaoCancelar = { flex: 1, height: "50px", borderRadius: "12px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none" };
 const botaoSalvarEdicao = { flex: 1, height: "50px", borderRadius: "12px", background: "#22c55e", color: "#fff", border: "none" };
-const faixaMensal = { display: "flex", gap: "10px", flexWrap: "wrap" as const };
