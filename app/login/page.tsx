@@ -238,13 +238,16 @@ export default function LoginPage() {
 
       {/* Modal de Autenticação Social */}
       {mostrarModalSocial && (
-        <div style={modalOverlay} onClick={() => setMostrarModalSocial(false)}>
+        <div style={modalOverlay} onClick={() => { setMostrarModalSocial(false); setErro(""); }}>
           <div style={modalCard} onClick={(e) => e.stopPropagation()}>
             <div style={modalCardStroke}></div>
             
             <button
               type="button"
-              onClick={() => setMostrarModalSocial(false)}
+              onClick={() => {
+                setMostrarModalSocial(false);
+                setErro("");
+              }}
               style={modalClose}
             >
               X
