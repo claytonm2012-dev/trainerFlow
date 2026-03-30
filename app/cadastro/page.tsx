@@ -23,12 +23,15 @@ export default function CadastroPage() {
   async function handleSocialLogin(provider: SocialProvider) {
     setErro("");
     setCarregandoSocial(provider);
+    console.log("[v0] Iniciando login social com:", provider);
 
     try {
-      await signInWithSocial(provider);
+      console.log("[v0] Chamando signInWithSocial...");
+      const result = await signInWithSocial(provider);
+      console.log("[v0] Login social bem-sucedido:", result.user.email);
       router.push("/dashboard");
     } catch (error: any) {
-      console.error("Erro ao fazer login social:", error);
+      console.error("[v0] Erro ao fazer login social:", error);
       
       if (error?.code === "auth/popup-closed-by-user") {
         setErro("Login cancelado. Tente novamente.");
@@ -246,12 +249,16 @@ export default function CadastroPage() {
             {/* Google */}
             <button
               type="button"
-              onClick={() => handleSocialLogin('google')}
+              onClick={() => {
+                console.log("[v0] Botao Google clicado");
+                handleSocialLogin('google');
+              }}
               disabled={carregandoSocial !== null || carregando}
               style={{
                 ...socialBtn,
                 background: "rgba(255,255,255,0.95)",
-                opacity: carregandoSocial !== null ? 0.7 : 1,
+                opacity: carregandoSocial !== null || carregando ? 0.7 : 1,
+                cursor: carregandoSocial !== null || carregando ? "not-allowed" : "pointer",
               }}
               title="Continuar com Google"
             >

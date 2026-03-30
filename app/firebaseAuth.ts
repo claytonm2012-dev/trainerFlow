@@ -38,6 +38,8 @@ export type SocialProvider = 'google' | 'facebook' | 'apple';
 
 // Função para login social com verificação/criação no Firestore
 export async function signInWithSocial(providerName: SocialProvider): Promise<UserCredential> {
+  console.log("[v0] signInWithSocial iniciado com provider:", providerName);
+  
   let provider;
   
   switch (providerName) {
@@ -54,8 +56,10 @@ export async function signInWithSocial(providerName: SocialProvider): Promise<Us
       throw new Error('Provedor não suportado');
   }
   
+  console.log("[v0] Chamando signInWithPopup...");
   const result = await signInWithPopup(auth, provider);
   const user = result.user;
+  console.log("[v0] signInWithPopup sucesso, user:", user.email);
   
   // Verifica se o usuário já existe na coleção students
   const studentRef = doc(db, "students", user.uid);
