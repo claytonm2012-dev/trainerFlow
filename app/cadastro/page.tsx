@@ -528,3 +528,46 @@ const botaoSecundario = {
   fontWeight: 800,
   cursor: "pointer",
 };
+
+const socialDivider: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  marginTop: "16px",
+};
+
+const socialDividerLine: React.CSSProperties = {
+  flex: 1,
+  height: "1px",
+  background: "rgba(255,255,255,0.12)",
+};
+
+const socialDividerText: React.CSSProperties = {
+  color: "rgba(255,255,255,0.50)",
+  fontSize: "12px",
+  fontWeight: 600,
+  whiteSpace: "nowrap",
+};
+
+const socialButtonsRow: React.CSSProperties = {
+  display: "flex",
+  gap: "12px",
+  marginTop: "12px",
+};
+
+const socialBtn: React.CSSProperties = {
+  flex: 1,
+  height: "52px",
+  borderRadius: "14px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  transition: "transform 0.15s ease",
+};
+
+const socialIconStyle: React.CSSProperties = {
+  width: "22px",
+  height: "22px",
+};
