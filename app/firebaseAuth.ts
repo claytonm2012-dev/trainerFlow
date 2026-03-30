@@ -1,8 +1,6 @@
 import { 
   getAuth, 
   GoogleAuthProvider, 
-  FacebookAuthProvider, 
-  OAuthProvider,
   signInWithPopup,
   UserCredential
 } from "firebase/auth";
@@ -13,53 +11,21 @@ import db from "./firebaseDb";
 // Inicializa o Auth
 const auth = getAuth(app);
 
-// Provedores de autenticação social
+// Provedor Google
 export const googleProvider = new GoogleAuthProvider();
-export const facebookProvider = new FacebookAuthProvider();
-export const appleProvider = new OAuthProvider('apple.com');
 
-// Configurações adicionais dos provedores
+// Configuracao do Google
 googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-facebookProvider.setCustomParameters({
-  display: 'popup'
-});
+// Tipo do provedor social (apenas Google)
+export type SocialProvider = 'google';
 
-appleProvider.setCustomParameters({
-  locale: 'pt_BR'
-});
-appleProvider.addScope('email');
-appleProvider.addScope('name');
-
-// Tipo do provedor social
-export type SocialProvider = 'google' | 'facebook' | 'apple';
-
-// Função para login social com verificação/criação no Firestore
+// Funcao para login social com verificacao/criacao no Firestore
 export async function signInWithSocial(providerName: SocialProvider): Promise<UserCredential> {
-  console.log("[v0] signInWithSocial iniciado com provider:", providerName);
-  
-  let provider;
-  
-  switch (providerName) {
-    case 'google':
-      provider = googleProvider;
-      break;
-    case 'facebook':
-      provider = facebookProvider;
-      break;
-    case 'apple':
-      provider = appleProvider;
-      break;
-    default:
-      throw new Error('Provedor não suportado');
-  }
-  
-  console.log("[v0] Chamando signInWithPopup...");
-  const result = await signInWithPopup(auth, provider);
+  const result = await signInWithPopup(auth, googleProvider);
   const user = result.user;
-  console.log("[v0] signInWithPopup sucesso, user:", user.email);
   
   // Verifica se o usuário já existe na coleção students
   const studentRef = doc(db, "students", user.uid);
