@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAJCloWymn07zgC4SfEdL_EMtYvRiJtAfA",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: "trainerflow-a2d97.firebaseapp.com",
   projectId: "trainerflow-a2d97",
   storageBucket: "trainerflow-a2d97.appspot.com",
